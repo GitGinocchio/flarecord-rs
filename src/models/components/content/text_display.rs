@@ -30,12 +30,17 @@ impl TextDisplay {
     }
 
     pub fn paragraph(mut self, text: impl Into<String>) -> Self {
-        self.0.content.push_str(&format!("{}\n", text.into()));
+        self.0.content.push_str(&format!("{} ", text.into()));
         self
     }
 
     pub fn bold(mut self, text: impl Into<String>) -> Self {
         self.0.content.push_str(&format!("**{}** ", text.into()));
+        self
+    }
+
+    pub fn newline(mut self) -> Self {
+        self.0.content.push_str("\n");
         self
     }
 }

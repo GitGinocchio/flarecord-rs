@@ -1,4 +1,4 @@
-use crate::{error::BotResult, models::{command::{Command, response::CommandResponse}, components::{Component, CustomComponentType, context::ComponentContext, interaction::ComponentInteraction, layout::LayoutComponent}}};
+use crate::{error::BotResult, models::{command::response::CommandResponse, components::{CustomComponentType, context::ComponentContext, interaction::ComponentInteraction}}};
 
 
 pub (crate) struct ComponentDispatcher;

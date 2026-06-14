@@ -4,7 +4,6 @@ use twilight_model::{
     channel::{
         ChannelType, 
         message::{
-            Component as TwilightComponent, 
             component::{
                 SelectDefaultValue, 
                 SelectMenu as TwilightSelectMenu, 

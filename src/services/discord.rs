@@ -2,11 +2,10 @@ use std::sync::{Arc, OnceLock};
 
 use reqwest::Client;
 use twilight_model::{
-    id::{Id, marker::UserMarker}, 
-    user::User as TwilightUser
+    channel::message::MessageFlags, http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType}, id::{Id, marker::{ApplicationMarker, InteractionMarker, UserMarker}}, user::User as TwilightUser
 };
 
-use crate::{error::Error, models::user::User};
+use crate::{error::{BotResult, Error}, models::{command::response::CommandResponse, user::User}, traits::component::IntoTwilight};
 
 
 
@@ -36,21 +35,55 @@ impl DiscordService {
         &self, 
         application_id: &str, 
         commands: &str
-    ) -> Result<(), Error> {
+    ) -> BotResult<()> {
         let url = format!("{}/applications/{}/commands", BASE_URL, application_id);
 
         self.client.put(url)
             .body(commands.to_string())
             .send()
-            .await
-            .map_err(Error::ReqwestError)?
-            .error_for_status()
-            .map_err(Error::ReqwestError)?;
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }
 
-    pub async fn fetch_user(&self, user_id: &Id<UserMarker>) -> Result<User, Error> {
+    pub (crate) async fn defer(&self, id: Id<InteractionMarker>, token: &str, is_edit: bool, ephemeral: bool) -> BotResult<()> {
+        let url = format!("{}/interactions/{}/{}/callback", BASE_URL, id, token);
+
+        let kind = if is_edit {
+            InteractionResponseType::DeferredUpdateMessage
+        } else {
+            InteractionResponseType::DeferredChannelMessageWithSource
+        };
+
+        let mut payload = CommandResponse::new_with_kind(kind);
+        if ephemeral {
+            payload.set_ephemeral(ephemeral);
+        }
+
+        self.client.post(url)
+            .json(&payload.into_twilight())
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub (crate) async fn edit(&self, application_id: Id<ApplicationMarker>, token: &str, response: CommandResponse) -> BotResult<()> {
+        let url = format!("{}/webhooks/{}/{}/messages/@original", BASE_URL, application_id, token);
+        let update_payload = response.as_update();
+
+        self.client.patch(url)
+            .json(&update_payload)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub async fn fetch_user(&self, user_id: &Id<UserMarker>) -> BotResult<User> {
         let endpoint = format!("{}/users/{}", BASE_URL, user_id);
 
         let user: TwilightUser = self.client.get(endpoint)

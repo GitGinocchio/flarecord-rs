@@ -11,7 +11,7 @@ use twilight_model::{
         }, 
         monetization::Entitlement
     }, 
-    channel::Channel, 
+    channel::{Channel, Message}, 
     guild::{
         PartialMember, 
         Permissions
@@ -30,7 +30,7 @@ use twilight_model::{
     oauth::ApplicationIntegrationMap
 };
 
-use crate::{error::Error, models::{command::data::CommandData, interaction::Interaction, user::{User, UserRef}}};
+use crate::{error::{BotResult, Error}, models::{command::{data::CommandData, response::CommandResponse}, interaction::Interaction, user::{User, UserRef}}, services::discord::DISCORD_SERVICE};
 
 #[allow(unused)]
 pub struct CommandInteraction {
@@ -45,7 +45,8 @@ pub struct CommandInteraction {
     pub guild: Option<InteractionPartialGuild>,
     pub guild_id: Option<Id<GuildMarker>>,
     pub guild_locale: Option<String>,
-    
+
+    pub message: Option<Message>,
     pub member: Option<PartialMember>,
     pub user: Option<User>,
     
@@ -128,6 +129,23 @@ impl CommandInteraction {
     pub fn is_bot_dm(&self) -> bool {
         matches!(self.context, Some(InteractionContextType::BotDm))
     }
+
+    pub async fn defer(&self, ephemeral: bool) -> BotResult<()> {
+        let service = DISCORD_SERVICE.get().expect("DiscordService should be Some");
+
+        let is_edit = if self.message.is_some() { true } else { false };
+
+        service.defer(self.id, &self.token, is_edit, ephemeral).await?;
+
+        Ok(())
+    }
+
+    pub async fn edit(&self, response: CommandResponse) -> BotResult<CommandResponse> {
+        let service = DISCORD_SERVICE.get().expect("DiscordService should be Some");
+        service.edit(self.application_id, &self.token, response).await?;
+
+        Ok(CommandResponse::new())
+    }
 }
 
 impl TryFrom<Interaction> for CommandInteraction {
@@ -155,6 +173,7 @@ impl TryFrom<Interaction> for CommandInteraction {
             channel_id: value.channel_id,
             guild_id: value.guild_id,
             member: value.member.take(),
+            message: value.message.take(),
             user: value.user.take().map(|u| u.into()),
             app_permissions: value.app_permissions
         })

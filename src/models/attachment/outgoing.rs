@@ -1,5 +1,7 @@
 use twilight_model::http::attachment::Attachment as TwilightOutgoingAttachment;
 
+use crate::traits::component::IntoTwilight;
+
 #[allow(unused)]
 pub struct Attachment {
     filename: String,
@@ -41,8 +43,8 @@ impl Default for Attachment {
     }
 }
 
-impl Into<TwilightOutgoingAttachment> for Attachment {
-    fn into(self) -> TwilightOutgoingAttachment {
+impl IntoTwilight<TwilightOutgoingAttachment> for Attachment {
+    fn into_twilight(self) -> TwilightOutgoingAttachment {
         TwilightOutgoingAttachment {
             description: self.description,
             file: self.file.unwrap_or(vec![]),

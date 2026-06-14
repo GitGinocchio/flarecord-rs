@@ -73,6 +73,7 @@ pub enum Error {
 
 impl Error {
     pub fn as_response(self) -> worker::Result<Response> {
+        worker::console_error!("Error: {self:?}");
         Response::error(format!("Error: {:?}", self), 500)
     }
 }

@@ -1,58 +1,87 @@
 use twilight_model::{
     channel::message::{
+        Embed as TwilightEmbed,
         Component as TwilightComponent, 
-        Embed, 
         MessageFlags
     }, 
     http::{
-        attachment::Attachment as TwilightOutgoingAttachment, 
         interaction::{
-            InteractionResponse, 
+            InteractionResponse as TwilightCommandResponse, 
             InteractionResponseData, 
             InteractionResponseType
         }
     }
 };
 
-use crate::{bot::Bot, models::{attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::{Component, ComponentType}}, traits::component::{IntoComponent, IntoTwilight}};
+use crate::{
+    models::{
+        attachment::outgoing::Attachment,
+        command::response::builder::CommandResponseBuilder, 
+        components::{
+            ComponentType
+        }, embed::Embed
+    }, 
+    traits::component::{
+        IntoComponent, 
+        IntoTwilight
+    }
+};
 
 pub mod builder;
 
-pub struct CommandResponse {
-    content: Option<String>,
-    embeds: Vec<Embed>,
-    attachments: Vec<Attachment>,
-    components: Vec<TwilightComponent>,
-    ephemeral: bool,
-    require_components_v2: bool
+#[derive(serde::Serialize, Default)]
+pub (crate) struct CommandResponseUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flags: Option<MessageFlags>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub embeds: Option<Vec<TwilightEmbed>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub components: Option<Vec<TwilightComponent>>,
 }
+
+pub struct CommandResponse(TwilightCommandResponse);
 
 impl CommandResponse {
     pub fn new() -> Self {
-        Self {
-            content: None,
-            embeds: vec![],
-            attachments: vec![],
-            components: vec![],
-            ephemeral: false,
-            require_components_v2: false
-        }
+        Self::empty()
+    }
+
+    pub fn new_with_kind(kind: InteractionResponseType) -> Self {
+        let mut empty = Self::empty();
+        empty.0.kind = kind;
+        empty
     }
 
     pub fn builder() -> CommandResponseBuilder {
         CommandResponseBuilder::new()
     }
 
+    pub fn empty() -> Self {
+        Self(TwilightCommandResponse {
+            kind: InteractionResponseType::ChannelMessageWithSource,
+            data: None
+        })
+    }
+
+    /// Note: content will be ignored when using components V2
     pub fn set_content(&mut self, content: impl Into<String>) {
-        self.content = Some(content.into());
+        self.0.data.get_or_insert_default().content = Some(content.into());
     }
 
     pub fn add_embed(&mut self, embed: Embed) {
-        self.embeds.push(embed);
+        self.0.data.get_or_insert_default()
+            .embeds
+            .get_or_insert_default()
+            .push(embed.into_twilight())
     }
 
     pub fn add_attachment(&mut self, attachment: Attachment) {
-        self.attachments.push(attachment)
+        self.0.data.get_or_insert_default()
+            .attachments
+            .get_or_insert_default()
+            .push(attachment.into_twilight())
     }
 
     /// Adds a component to the response.
@@ -67,62 +96,63 @@ impl CommandResponse {
         match component.into_component() {
             ComponentType::Base(component) => {
                 if component.require_components_v2() {
-                    self.require_components_v2 = true;
+                    self.0.data.get_or_insert_default()
+                        .flags
+                        .get_or_insert(MessageFlags::empty())
+                        .insert(MessageFlags::IS_COMPONENTS_V2);
                 }
 
-                self.components.push(component.into_twilight())
+                //let id = (self.components.len() +1) as i32;
+                //component.set_id("test", id);
+
+                self.0.data.get_or_insert_default()
+                    .components
+                    .get_or_insert_default()
+                    .push(component.into_twilight())
             },
             ComponentType::Custom(custom) => {
                 let mut built_component = custom.build();
                 built_component.set_id(custom.id());
 
                 if built_component.require_components_v2() {
-                    self.require_components_v2 = true;
+                    self.0.data.get_or_insert_default()
+                        .flags
+                        .get_or_insert(MessageFlags::empty())
+                        .insert(MessageFlags::IS_COMPONENTS_V2);
                 }
 
                 let mut components: Vec<TwilightComponent> = built_component.into_twilight();
-                worker::console_debug!("twilight_component: {components:?}");
-                self.components.append(&mut components);
+                self.0.data.get_or_insert_default()
+                    .components
+                    .get_or_insert_default()
+                    .append(&mut components)
             }
         }
     }
 
     pub fn set_ephemeral(&mut self, ephemeral: bool) {
-        self.ephemeral = ephemeral;
+        self.0.data.get_or_insert_default()
+            .flags
+            .get_or_insert(MessageFlags::empty())
+            .set(MessageFlags::EPHEMERAL, ephemeral);
+    }
+
+    pub (crate) fn as_update(self) -> CommandResponseUpdate {
+        let Some(mut data) = self.0.data else {
+            return CommandResponseUpdate::default();
+        };
+
+        CommandResponseUpdate {
+            flags: data.flags.take(),
+            content: data.content.take(),
+            embeds: data.embeds.take(),
+            components: data.components.take()
+        }
     }
 }
 
-impl IntoTwilight<InteractionResponse> for CommandResponse {
-    fn into_twilight(self) -> InteractionResponse {
-        let attachments: Vec<TwilightOutgoingAttachment> = self.attachments
-            .into_iter()
-            .enumerate()
-            .map(|(i, mut file)| {
-                file.set_id(i as u64);
-                file.into()
-            })
-            .collect();
-
-        let mut flags = MessageFlags::empty();
-
-        if self.ephemeral {
-            flags = flags.union(MessageFlags::EPHEMERAL);
-        }
-
-        if self.require_components_v2 {
-            flags = flags.union(MessageFlags::IS_COMPONENTS_V2)
-        }
-
-        InteractionResponse { 
-            kind: InteractionResponseType::ChannelMessageWithSource, 
-            data: Some(InteractionResponseData {
-                content: self.content,
-                flags: Some(flags),
-                embeds: if self.embeds.len() > 0 { Some(self.embeds) } else { None },
-                attachments: if attachments.len() > 0 { Some(attachments) } else { None },
-                components: if self.components.len() > 0 { Some(self.components) } else { None },
-                ..Default::default()
-            })
-        }
+impl IntoTwilight<TwilightCommandResponse> for CommandResponse {
+    fn into_twilight(self) -> TwilightCommandResponse {
+        self.0
     }
 }

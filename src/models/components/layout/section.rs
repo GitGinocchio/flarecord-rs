@@ -31,9 +31,9 @@ pub enum SectionAccessory {
 }
 
 impl SectionAccessory {
-    pub (crate) fn set_id(&mut self, id: i32) {
+    pub (crate) fn set_id(&mut self, component_id: &str, id: i32) {
         match self {
-            SectionAccessory::Button(button) => button.set_id(id.to_string()),
+            SectionAccessory::Button(button) => button.set_id(format!("{}:{}",component_id, id)),
             SectionAccessory::Thumbnail(thumbnail) => thumbnail.set_id(id)
         }
     }
@@ -65,10 +65,14 @@ impl Section {
         SectionState::new()
     }
 
-    pub (crate) fn set_id(&mut self, _component_id: &str, id: i32) {
+    pub (crate) fn set_id(&mut self, component_id: &str, id: i32) {
         match self {
             Self::Ready(state) => {
                 state.id = Some(id);
+
+                if let Some(accessory) = &mut state.accessory {
+                    accessory.set_id(component_id, id);
+                }
 
                 for (id, comp) in &mut state.components {
                     comp.set_id(*id);
@@ -97,13 +101,10 @@ impl SectionState<Empty, Empty> {
     }
 
     pub fn accessory(self, accessory: impl Into<SectionAccessory>) -> SectionState<Empty, HasAccessory> {
-        // NOTE: sempre 0 perche' e' uno solo!
-        let mut accessory = accessory.into();
-        accessory.set_id(0);
         SectionState {
             id: self.id,
             components: self.components,
-            accessory: Some(accessory),
+            accessory: Some(accessory.into()),
             _marker: PhantomData
         }
     }
@@ -116,7 +117,7 @@ impl SectionState<Empty, Empty> {
 fn add_component<A, B, C, D>(mut state: SectionState<A, B>, component: SectionComponent) -> SectionState<C, D> {
     let id = (state.components.len() + 1) as i32;
     state.components.insert(id, component);
-    SectionState { id: state.id, components: state.components, accessory: None, _marker: PhantomData }
+    SectionState { id: state.id, components: state.components, accessory: state.accessory, _marker: PhantomData }
 }
 
 impl SectionState<HasComponent, Empty> {

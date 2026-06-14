@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use flarecord::{
     models::{ChannelType, SelectMenuType, components::{
-        content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay}, interactive::{button::{
+        content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay, thumbnail::Thumbnail}, interactive::{button::{
             Button, 
             ButtonStyle
         }, select::Select}, layout::{
@@ -29,51 +29,25 @@ impl Component for MyComponent {
     fn build(&self) -> RootComponent {
         let mut root = RootComponent::new();
 
-        let back_button = Button::new()
-            .style(ButtonStyle::Secondary)
-            .label("Back")
-            .build();
-
-        let cancel_button = Button::new()
-            .style(ButtonStyle::Danger)
-            .label("Cancel")
-            .build();
-
-        let next_button = Button::new()
-            .style(ButtonStyle::Primary)
-            .label("Next")
-            .build();
-
-        let action_row = ActionRow::new()
-            .button(back_button)
-            .button(cancel_button)
-            .button(next_button)
-            .build();
-
-        /*
         let text_display = TextDisplay::new()
-            .heading(1, "Ciaooo");
+            .heading(1, "Ciaooo")
+            .paragraph("This is some")
+            .bold("text");
 
         let button = Button::new()
-            .url("https://google.com")
+            .style(ButtonStyle::Primary)
+            .label("Test")
             .build();
 
+        let thumbnail = Thumbnail::new("https://google.com")
+            .description("Un link a google...");
+        
         let section = Section::new()
             .component(text_display)
-            .accessory(button)
+            .accessory(thumbnail)
             .build();
+        
         root.add(section);
-        */
-
-        let select = Select::user()
-            .build();
-
-        let action_row2 = ActionRow::new()
-            .select(select)
-            .build();
-
-        root.add(action_row2);
-        root.add(action_row);
 
         root
     }
@@ -82,3 +56,45 @@ impl Component for MyComponent {
         Ok(CommandResponse::new())
     }
 }
+
+/*
+command_response: {
+    "data": {
+        "components": [
+            {
+                "components": [
+                    {
+                        "custom_id": String("0"), 
+                        "disabled": Bool(false), 
+                        "placeholder": String("Ciaooo"), 
+                        "type": Number(6)
+                    }
+                ], 
+                "id": Number(0), 
+                "type": Number(1)
+            }, 
+            {
+                "accessory":  {
+                    "custom_id": String("mycomponent:1"), 
+                    "label": String("Test"), 
+                    "style": Number(1), 
+                    "type": Number(2)
+                }, 
+                "components": [
+                    {
+                        "content": String("# Ciaooo\n"), 
+                        "id": Number(1), 
+                        "type": Number(10)
+                    }
+                ],
+                "id": Number(1), 
+                "type": Number(9)
+            }
+        ], 
+        "content": String("Hello <@778017089230209045>!"), 
+        "flags": Number(32832)
+    }, 
+    
+    "type": Number(4)
+}
+*/

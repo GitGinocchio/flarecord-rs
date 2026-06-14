@@ -1,6 +1,4 @@
-use twilight_model::channel::message::Embed;
-
-use crate::{models::{attachment::outgoing::Attachment, components::{Component, ComponentType}}, traits::component::IntoComponent};
+use crate::{models::{attachment::outgoing::Attachment, embed::Embed}, traits::component::IntoComponent};
 
 use super::CommandResponse;
 
@@ -15,6 +13,7 @@ impl CommandResponseBuilder {
         self.0
     }
 
+    /// Note: content will be ignored when using components V2
     pub fn content(mut self, content: impl Into<String>) -> Self {
         self.0.set_content(content);
         self

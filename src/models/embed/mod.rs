@@ -1,6 +1,6 @@
 use twilight_model::{channel::message::{Embed as TwilightEmbed, embed::EmbedField}, util::Timestamp};
 
-use crate::models::{color::Color, embed::{author::EmbedAuthor, footer::EmbedFooter, image::EmbedImage, provider::EmbedProvider, thumbnail::EmbedThumbnail, video::EmbedVideo}};
+use crate::{models::{color::Color, embed::{author::EmbedAuthor, footer::EmbedFooter, image::EmbedImage, provider::EmbedProvider, thumbnail::EmbedThumbnail, video::EmbedVideo}}, traits::component::IntoTwilight};
 
 pub mod thumbnail;
 pub mod provider;
@@ -85,8 +85,8 @@ impl From<TwilightEmbed> for Embed {
     }
 }
 
-impl Into<TwilightEmbed> for Embed {
-    fn into(self) -> TwilightEmbed {
+impl IntoTwilight<TwilightEmbed> for Embed {
+    fn into_twilight(self) -> TwilightEmbed {
         self.0
     }
 }
