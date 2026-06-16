@@ -5,18 +5,10 @@ use twilight_model::channel::message::{
     component::Section as TwilightSection
 };
 
-use crate::{models::components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, interactive::button::Button}, traits::component::IntoTwilight};
+use crate::{models::components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, id::ID_GEN, interactive::button::Button}, traits::component::IntoTwilight};
 
 pub enum SectionComponent {
     TextDisplay(TextDisplay)
-}
-
-impl SectionComponent {
-    pub (crate) fn set_id(&mut self, id: i32) {
-        match self {
-            SectionComponent::TextDisplay(text_display) => text_display.set_id(id)
-        }
-    }
 }
 
 impl From<TextDisplay> for SectionComponent {
@@ -28,15 +20,6 @@ impl From<TextDisplay> for SectionComponent {
 pub enum SectionAccessory {
     Button(Button),
     Thumbnail(Thumbnail)
-}
-
-impl SectionAccessory {
-    pub (crate) fn set_id(&mut self, component_id: &str, id: i32) {
-        match self {
-            SectionAccessory::Button(button) => button.set_id(format!("{}:{}",component_id, id)),
-            SectionAccessory::Thumbnail(thumbnail) => thumbnail.set_id(id)
-        }
-    }
 }
 
 impl From<Button> for SectionAccessory {
@@ -65,27 +48,17 @@ impl Section {
         SectionState::new()
     }
 
-    pub (crate) fn set_id(&mut self, component_id: &str, id: i32) {
+    pub (crate) fn get_id(&self) -> i32 {
         match self {
-            Self::Ready(state) => {
-                state.id = Some(id);
-
-                if let Some(accessory) = &mut state.accessory {
-                    accessory.set_id(component_id, id);
-                }
-
-                for (id, comp) in &mut state.components {
-                    comp.set_id(*id);
-                }
-            }
+            Self::Ready(ready) => ready.id
         }
     }
 }
 
 #[allow(unused)]
 pub struct SectionState<C, A> {
-    id: Option<i32>,
-    components: HashMap<i32, SectionComponent>,
+    id: i32,
+    components: Vec<SectionComponent>,
     accessory: Option<SectionAccessory>,
     _marker: PhantomData<(C, A)>
 }
@@ -93,8 +66,8 @@ pub struct SectionState<C, A> {
 impl SectionState<Empty, Empty> {
     fn new() -> Self {
         Self {
-            id: None,
-            components: HashMap::new(),
+            id: ID_GEN.next_i32(),
+            components: Vec::new(),
             accessory: None,
             _marker: PhantomData
         }
@@ -115,8 +88,7 @@ impl SectionState<Empty, Empty> {
 }
 
 fn add_component<A, B, C, D>(mut state: SectionState<A, B>, component: SectionComponent) -> SectionState<C, D> {
-    let id = (state.components.len() + 1) as i32;
-    state.components.insert(id, component);
+    state.components.push(component);
     SectionState { id: state.id, components: state.components, accessory: state.accessory, _marker: PhantomData }
 }
 
@@ -166,15 +138,12 @@ impl IntoTwilight<TwilightComponent> for SectionComponent {
 
 impl IntoTwilight<TwilightSection> for SectionState<HasComponent, HasAccessory> {
     fn into_twilight(self) -> TwilightSection {
-        let mut components: Vec<_> = self.components.into_iter().collect();
-        components.sort_by_key(|(id, _c)| *id);
-
         TwilightSection {
-            id: self.id,
+            id: Some(self.id),
             accessory: Box::new(self.accessory.expect("Section should be ready").into_twilight()),
-            components: components
+            components: self.components
                 .into_iter()
-                .map(|(_id, c)| c.into_twilight())
+                .map(|c| c.into_twilight())
                 .collect()
         }
     }

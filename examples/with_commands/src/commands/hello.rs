@@ -1,4 +1,4 @@
-use flarecord::{models::{SelectMenuType, color::Color, components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, interactive::{button::{Button, ButtonStyle}, select::Select}, layout::{action_row::{ActionRow, IntoActionRow}, container::Container, section::Section}}}, prelude::*};
+use flarecord::{models::{color::Color, components::{content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay, thumbnail::Thumbnail}, interactive::select::Select, layout::{action_row::{ActionRow, IntoActionRow}, container::Container, section::Section}}}, prelude::*};
 use async_trait::async_trait;
 
 use crate::components::mycomponent::MyComponent;
@@ -33,38 +33,8 @@ impl Command for Hello {
             None => format!("Hello {0}!", author.mention())
         };
 
-
-        let select = Select::role()
-            .placeholder("Ciaooo")
-            .build();
-
-        let action_row = ActionRow::new()
-            .select(select)
-            .build();
-
-        let thumbnail = Thumbnail::new("https://google.com")
-            .description("Un link a google...");
-
-        let text_display = TextDisplay::new()
-            .heading(1, "Ciaooo")
-            .paragraph("This is some")
-            .bold("text");
-        
-        let section = Section::new()
-            .component(text_display)
-            .accessory(thumbnail)
-            .build();
-
-        let container = Container::new()
-            .accent_color(Color::from_rgb(255, 0, 0))
-            .add(action_row)
-            .add(section);
-        
         let response = CommandResponseBuilder::new()
-            // TOFIX: Il problema e' il componente custom che non viene tradotto in un componente valido
-            // durante la serializzazione
-            //.component(MyComponent)
-            .component(container)
+            .component(MyComponent)
             .build();
 
         interaction.edit(response).await

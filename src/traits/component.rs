@@ -1,9 +1,11 @@
-use crate::models::components::ComponentType;
+use std::sync::Arc;
+
+use crate::models::components::{Component};
 
 
 
 pub  trait IntoComponent {
-    fn into_component(self) -> ComponentType;
+    fn into_component(self) -> Arc<dyn Component>;
 }
 
 pub trait IntoTwilight<T> {

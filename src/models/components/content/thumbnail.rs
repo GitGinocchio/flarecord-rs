@@ -30,10 +30,6 @@ impl Thumbnail {
         self.0.spoiler = Some(spoiler);
         self
     }
-
-    pub (crate) fn set_id(&mut self, id: i32) {
-        self.0.id = Some(id);
-    }
 }
 
 impl IntoTwilight<TwilightThumbnail> for Thumbnail {

@@ -27,3 +27,8 @@ thiserror = "^2.0"
 hex = "^0.4"
 
 ed25519-dalek = "^2.2"
+rand = "0.10.1"
+
+[dependencies.getrandom]
+version = "0.4"
+features = ["wasm_js"]

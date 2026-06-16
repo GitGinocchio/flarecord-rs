@@ -9,8 +9,8 @@ use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
 use crate::models::command::serializable::SerializableCommand;
-use crate::models::command::{Command, CommandType};
-use crate::models::components::{Component, ComponentType};
+use crate::models::command::Command;
+use crate::models::components::ComponentType;
 use crate::models::interaction::Interaction;
 use crate::models::modals::ModalType;
 use crate::error::Error;
@@ -27,7 +27,7 @@ static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 #[allow(unused)]
 pub struct Bot {
     pub (crate) commands: HashMap<String, Arc<dyn Command>>,
-    pub (crate) components: HashMap<String, Arc<dyn Component>>,
+    pub (crate) components: HashMap<String, ComponentType>,
     pub (crate) modals: HashMap<String, ModalType>
 }
 

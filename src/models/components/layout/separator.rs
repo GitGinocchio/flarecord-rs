@@ -20,10 +20,6 @@ impl Separator {
         })
     }
 
-    pub (crate) fn set_id(&mut self, _component_id: &str, id: i32) {
-        self.0.id = Some(id);
-    }
-
     pub fn spacing(mut self, spacing: u8) -> Self {
         self.0.spacing = Some(spacing.into());
         self

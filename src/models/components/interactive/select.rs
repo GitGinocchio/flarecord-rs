@@ -22,7 +22,7 @@ use twilight_model::{
     }
 };
 
-use crate::{models::components::{context::ComponentContext, interaction::ComponentInteraction}, traits::component::IntoTwilight};
+use crate::{models::components::{context::ComponentContext, id::ID_GEN, interaction::ComponentInteraction}, traits::component::IntoTwilight};
 
 pub enum Select {
     String(SelectKind<String>),
@@ -33,13 +33,13 @@ pub enum Select {
 }
 
 impl Select {
-    pub (crate) fn set_id(&mut self, id: String) {
+    pub (crate) fn get_id(&self) -> String {
         match self {
-            Select::Channel(select) => select.set_id(id),
-            Select::String(select) => select.set_id(id),
-            Select::User(select) => select.set_id(id),
-            Select::Role(select) => select.set_id(id),
-            Select::Mentionable(select) => select.set_id(id)
+            Select::Channel(select) => select.get_id(),
+            Select::String(select) => select.get_id(),
+            Select::User(select) => select.get_id(),
+            Select::Role(select) => select.get_id(),
+            Select::Mentionable(select) => select.get_id()
         }
     }
 
@@ -68,7 +68,7 @@ impl Select {
             inner: TwilightSelectMenu {
                 id: None,
                 channel_types: None,
-                custom_id: "0".into(),
+                custom_id: ID_GEN.next(),
                 default_values: None,
                 disabled: false,
                 kind: kind,
@@ -129,11 +129,9 @@ impl<T> SelectKind<T> {
         self.inner.disabled = disabled;
         self
     }
-}
 
-impl<T> SelectKind<T> {
-    pub (crate) fn set_id(&mut self, id: String) {
-        self.inner.custom_id = id;
+    pub (crate) fn get_id(&self) -> String {
+        self.inner.custom_id.clone()
     }
 }
 

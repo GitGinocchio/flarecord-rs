@@ -9,7 +9,7 @@ use crate::{
             interaction::CommandInteraction, 
             response::CommandResponse
         }, 
-        components::{Component}, 
+        components::{Component, ComponentType}, 
         modals::{Modal, ModalType}
     }
 };
@@ -18,7 +18,7 @@ use crate::{
 #[allow(unused)]
 pub struct BotBuilder {
     pub (crate) commands: HashMap<String, Arc<dyn Command>>,
-    pub (crate) components: HashMap<String, Arc<dyn Component>>,
+    pub (crate) components: HashMap<String, ComponentType>,
     pub (crate) modals: HashMap<String, ModalType>
 }
 

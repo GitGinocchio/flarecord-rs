@@ -6,8 +6,7 @@ use twilight_model::{
     }, 
     http::{
         interaction::{
-            InteractionResponse as TwilightCommandResponse, 
-            InteractionResponseData, 
+            InteractionResponse as TwilightCommandResponse,
             InteractionResponseType
         }
     }
@@ -17,9 +16,7 @@ use crate::{
     models::{
         attachment::outgoing::Attachment,
         command::response::builder::CommandResponseBuilder, 
-        components::{
-            ComponentType
-        }, embed::Embed
+        embed::Embed
     }, 
     traits::component::{
         IntoComponent, 
@@ -29,7 +26,7 @@ use crate::{
 
 pub mod builder;
 
-#[derive(serde::Serialize, Default)]
+#[derive(serde::Serialize, Default, Debug)]
 pub (crate) struct CommandResponseUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flags: Option<MessageFlags>,
@@ -93,41 +90,21 @@ impl CommandResponse {
     ///   specifically: [`ActionRow`], [`Container`], [`Section`], or [`Separator`].
     /// - **Custom Components**: Any type implementing the [`Component`] trait.
     pub fn add_component(&mut self, component: impl IntoComponent) {
-        match component.into_component() {
-            ComponentType::Base(component) => {
-                if component.require_components_v2() {
-                    self.0.data.get_or_insert_default()
-                        .flags
-                        .get_or_insert(MessageFlags::empty())
-                        .insert(MessageFlags::IS_COMPONENTS_V2);
-                }
+        let component = component.into_component();
+        let root = component.build();
 
-                //let id = (self.components.len() +1) as i32;
-                //component.set_id("test", id);
-
-                self.0.data.get_or_insert_default()
-                    .components
-                    .get_or_insert_default()
-                    .push(component.into_twilight())
-            },
-            ComponentType::Custom(custom) => {
-                let mut built_component = custom.build();
-                built_component.set_id(custom.id());
-
-                if built_component.require_components_v2() {
-                    self.0.data.get_or_insert_default()
-                        .flags
-                        .get_or_insert(MessageFlags::empty())
-                        .insert(MessageFlags::IS_COMPONENTS_V2);
-                }
-
-                let mut components: Vec<TwilightComponent> = built_component.into_twilight();
-                self.0.data.get_or_insert_default()
-                    .components
-                    .get_or_insert_default()
-                    .append(&mut components)
-            }
+        if root.require_components_v2() {
+            self.0.data.get_or_insert_default()
+                .flags
+                .get_or_insert(MessageFlags::empty())
+                .insert(MessageFlags::IS_COMPONENTS_V2);
         }
+
+        let mut components: Vec<TwilightComponent> = root.into_twilight();
+        self.0.data.get_or_insert_default()
+            .components
+            .get_or_insert_default()
+            .append(&mut components)
     }
 
     pub fn set_ephemeral(&mut self, ephemeral: bool) {

@@ -61,11 +61,17 @@ impl DiscordService {
             payload.set_ephemeral(ephemeral);
         }
 
-        self.client.post(url)
+        let response = self.client.post(url)
             .json(&payload.into_twilight())
             .send()
-            .await?
-            .error_for_status()?;
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            worker::console_error!("API Error [{}]: {}", status, body);
+            return Err(Error::Generic(format!("API returned {}: {}", status, body)));
+        }
 
         Ok(())
     }
@@ -74,11 +80,19 @@ impl DiscordService {
         let url = format!("{}/webhooks/{}/{}/messages/@original", BASE_URL, application_id, token);
         let update_payload = response.as_update();
 
-        self.client.patch(url)
+        worker::console_debug!("response_edit_payload: {update_payload:#?}");
+
+        let response = self.client.patch(url)
             .json(&update_payload)
             .send()
-            .await?
-            .error_for_status()?;
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            worker::console_error!("API Error [{}]: {}", status, body);
+            return Err(Error::Generic(format!("API returned {}: {}", status, body)));
+        }
 
         Ok(())
     }

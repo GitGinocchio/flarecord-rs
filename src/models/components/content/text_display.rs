@@ -12,10 +12,6 @@ impl TextDisplay {
         })
     }
 
-    pub (crate) fn set_id(&mut self, id: i32) {
-        self.0.id = Some(id);
-    }
-
     pub fn content(mut self, content: impl Into<String>) -> Self {
         self.0.content = content.into();
         self

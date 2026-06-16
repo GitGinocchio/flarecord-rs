@@ -12,7 +12,7 @@ use twilight_model::{
     }
 };
 
-use crate::{models::components::{context::ComponentContext, interaction::ComponentInteraction}, traits::component::IntoTwilight};
+use crate::{models::components::{context::ComponentContext, id::ID_GEN, interaction::ComponentInteraction}, traits::component::IntoTwilight};
 
 
 pub enum ButtonStyle {
@@ -45,11 +45,11 @@ pub enum Button {
 }
 
 impl Button {
-    pub (crate) fn set_id(&mut self, id: String) {
+    pub (crate) fn get_id(&self) -> String {
         match self {
-            Button::Link(button) => button.set_id(id),
-            Button::Normal(button) => button.set_id(id),
-            Button::Premium(button) => button.set_id(id),
+            Button::Link(button) => button.get_id(),
+            Button::Normal(button) => button.get_id(),
+            Button::Premium(button) => button.get_id(),
         }
     }
 
@@ -68,7 +68,7 @@ impl ButtonKind<Empty> {
     pub fn new() -> Self {
         Self {
             inner: TwilightButton {
-                custom_id: None,
+                custom_id: Some(ID_GEN.next()),
                 id: None,
                 disabled: false,
                 emoji: None,
@@ -95,7 +95,6 @@ impl ButtonKind<Empty> {
     pub fn url(mut self, url: impl Into<String>) -> ButtonKind<Link> {
         self.inner.style = TwilightButtonStyle::Link;
         self.inner.url = Some(url.into());
-        self.inner.custom_id = None;
         
         ButtonKind {
             inner: self.inner,
@@ -151,8 +150,8 @@ macro_rules! impl_into_button {
     ($(($state:ident, $variant:ident)),* $(,)?) => {
         $(
             impl ButtonKind<$state> {
-                pub fn set_id(&mut self, id: String) {
-                    self.inner.custom_id = Some(id);
+                pub fn get_id(&self) -> String {
+                    self.inner.custom_id.clone().unwrap_or("premium".into())
                 }
 
                 pub fn build(self) -> Button {

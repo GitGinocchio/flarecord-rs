@@ -39,15 +39,26 @@ impl Component for MyComponent {
             .label("Test")
             .build();
 
+        let text_display2 = TextDisplay::new()
+            .heading(1, "Ciaooo")
+            .paragraph("This is some")
+            .bold("text");
+
         let thumbnail = Thumbnail::new("https://google.com")
             .description("Un link a google...");
         
         let section = Section::new()
             .component(text_display)
+            .accessory(button)
+            .build();
+
+        let section2 = Section::new()
+            .component(text_display2)
             .accessory(thumbnail)
             .build();
         
         root.add(section);
+        root.add(section2);
 
         root
     }

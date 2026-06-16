@@ -39,31 +39,16 @@ impl MediaGalleryItem {
 
 impl MediaGallery {
     pub fn new() -> MediaGalleryState<0> {
-        MediaGalleryState {
-            id: None,
-            items: Vec::new()
-        }
+        MediaGalleryState(Vec::new())
     }
 }
 
-pub struct MediaGalleryState<const N: usize> {
-    pub id: Option<i32>,
-    pub items: Vec<TwilightMediaGalleryItem>,
-}
-
-impl<const N: usize> MediaGalleryState<N> {
-    pub (crate) fn set_id(&mut self, id: i32) {
-        self.id = Some(id);
-    }
-}
+pub struct MediaGalleryState<const N: usize>(Vec<TwilightMediaGalleryItem>);
 
 impl MediaGalleryState<0> {
     pub fn add_item(mut self, item: MediaGalleryItem) -> MediaGalleryState<1> {
-        self.items.push(item.into_twilight());
-        MediaGalleryState {
-            id: self.id,
-            items: self.items
-        }
+        self.0.push(item.into_twilight());
+        MediaGalleryState(self.0)
     }
 }
 
@@ -75,17 +60,6 @@ macro_rules! define_media_gallery {
             Has10(MediaGalleryState<10>)
         }
 
-        impl MediaGallery {
-            pub(crate) fn set_id(&mut self, id: i32) {
-                match self {
-                    $(
-                        Self::$variant(mg) => mg.set_id(id),
-                    )*
-                    Self::Has10(mg) => mg.set_id(id)
-                }
-            }
-        }
-
         $(
             impl MediaGalleryState<$n> {
                 pub fn build(self) -> MediaGallery {
@@ -93,11 +67,8 @@ macro_rules! define_media_gallery {
                 }
 
                 pub fn add_item(mut self, item: MediaGalleryItem) -> MediaGalleryState<$next> {
-                    self.items.push(item.into_twilight());
-                    MediaGalleryState { 
-                        id: self.id, 
-                        items: self.items 
-                    }
+                    self.0.push(item.into_twilight());
+                    MediaGalleryState(self.0)
                 }
             }
 
@@ -140,21 +111,21 @@ impl IntoTwilight<TwilightMediaGalleryItem> for MediaGalleryItem {
 
 impl IntoTwilight<TwilightComponent> for MediaGallery {
     fn into_twilight(self) -> TwilightComponent {
-        let (id, items) = match self {
-            Self::Has1(mg) => (mg.id, mg.items),
-            Self::Has2(mg) => (mg.id, mg.items),
-            Self::Has3(mg) => (mg.id, mg.items),
-            Self::Has4(mg) => (mg.id, mg.items),
-            Self::Has5(mg) => (mg.id, mg.items),
-            Self::Has6(mg) => (mg.id, mg.items),
-            Self::Has7(mg) => (mg.id, mg.items),
-            Self::Has8(mg) => (mg.id, mg.items),
-            Self::Has9(mg) => (mg.id, mg.items),
-            Self::Has10(mg) => (mg.id, mg.items),
+        let items = match self {
+            Self::Has1(mg) => mg.0,
+            Self::Has2(mg) => mg.0,
+            Self::Has3(mg) => mg.0,
+            Self::Has4(mg) => mg.0,
+            Self::Has5(mg) => mg.0,
+            Self::Has6(mg) => mg.0,
+            Self::Has7(mg) => mg.0,
+            Self::Has8(mg) => mg.0,
+            Self::Has9(mg) => mg.0,
+            Self::Has10(mg) => mg.0,
         };
 
         TwilightComponent::MediaGallery(TwilightMediaGallery {
-            id: id,
+            id: None,
             items: items
         })
     }
