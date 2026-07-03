@@ -5,8 +5,6 @@ use std::sync::{Arc, OnceLock};
 use reqwest::{Client};
 use reqwest::header::{HeaderMap, HeaderValue};
 use twilight_model::application::interaction::Interaction as TwilightInteraction;
-use twilight_model::id::Id;
-use twilight_model::id::marker::ApplicationMarker;
 use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
@@ -105,12 +103,6 @@ impl Bot {
         let public_key = env.secret("DISCORD_BOT_PUBLIC_KEY")
             .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
             .to_string();
-
-        let token = env.secret("DISCORD_BOT_TOKEN")
-            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
-            .to_string();
-
-        self.ensure_global_client(&token);
     
         let is_valid = crypto::verify_signature(headers, &body, &public_key)?;
 
@@ -120,6 +112,12 @@ impl Bot {
 
         let tw_interaction: TwilightInteraction = serde_json::from_slice(&body)?;
         let interaction = Interaction::from(tw_interaction);
+
+        let token = env.secret("DISCORD_BOT_TOKEN")
+            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
+            .to_string();
+
+        self.ensure_global_client(&token);
 
         match interaction.perform(env).await {
             Ok(response) => Ok(response),
