@@ -5,10 +5,11 @@ use std::sync::{Arc, OnceLock};
 use reqwest::{Client};
 use reqwest::header::{HeaderMap, HeaderValue};
 use twilight_model::application::interaction::Interaction as TwilightInteraction;
+use twilight_model::id::Id;
+use twilight_model::id::marker::ApplicationMarker;
 use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
-use crate::models::command::serializable::SerializableCommand;
 use crate::models::command::Command;
 use crate::models::components::ComponentType;
 use crate::models::interaction::Interaction;
@@ -70,27 +71,8 @@ impl Bot {
         Bot::get_global()
     }
 
-    /// Synchronizes the bot's commands with the Discord API using a global `PUT` operation.
-    ///
-    /// This method uses an atomic flag to ensure idempotent behavior:
-    /// - If the flag is already `true`, the operation is skipped to avoid redundant API calls.
-    /// - Otherwise, it retrieves credentials from the environment, initializes the 
-    ///   HTTP client (if necessary), and pushes the current command list to Discord.
-    ///
-    /// # Arguments
-    /// * `env` - The `worker::Env` execution environment, required to access the 
-    ///   Discord BOT_TOKEN and APPLICATION_ID secrets.
-    ///
-    /// # Returns
-    /// * `Ok(true)` - If the synchronization had already occurred (skipped).
-    /// * `Ok(false)` - If the synchronization was successfully performed during this call.
-    ///
-    /// # Errors
-    /// Returns a `worker::Result` error if:
-    /// - Required environment variables are missing.
-    /// - JSON serialization of the commands fails.
-    /// - The HTTP request to Discord fails or returns an error status code.
-    pub async fn sync_commands_once(&self, env: &Env) -> worker::Result<bool> {
+    #[deprecated]
+    pub (crate) async fn sync_commands_once(&self, env: &Env) -> worker::Result<bool> {
         if IS_INITIALIZED.load(Ordering::Relaxed) {
             worker::console_debug!("Command synchronization not necessary");
             return Ok(true);
@@ -108,20 +90,8 @@ impl Bot {
 
         let client = self.ensure_global_client(&token);
 
-        let url = format!(
-            "https://discord.com/api/v10/applications/{}/commands",
-            application_id
-        );
-
-        let serializable_commands: Vec<SerializableCommand<'_>> = self.commands.values()
-            .map(|cmd| SerializableCommand(cmd))
-            .collect();
-
-        let serialized_commands = serde_json::to_string(&serializable_commands).map_err(|e| Error::JsonFailed(e))?;
-        worker::console_log!("Sending  : {}", serialized_commands);
-
         let discord_service = DiscordService::get_or_init(client.clone());
-        discord_service.update_global_commands(&application_id, &serialized_commands).await?;
+        //discord_service.update_global_commands().await?;
 
         IS_INITIALIZED.store(true, Ordering::Relaxed);
 

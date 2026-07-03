@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    bot::Bot, error::BotResult, models::{
+    bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
             Command,
             CommandHandler, 
@@ -30,6 +30,10 @@ impl BotBuilder {
             components: HashMap::new(),
             modals: HashMap::new()
         }
+    }
+
+    pub fn enable_dev_commands(mut self) -> Self {
+        self.register_command(DevCommands)
     }
 
     pub fn register_component(mut self, component: impl Component + 'static) -> Self {

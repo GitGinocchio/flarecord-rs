@@ -13,6 +13,7 @@ use crate::components::mycomponent::MyComponent;
 
 static BOT: LazyLock<Arc<Bot>> = LazyLock::new(|| {
     BotBuilder::new()
+        .enable_dev_commands()
         .register_component(MyComponent)
         .register_command(Hello)
         .build()
@@ -24,7 +25,5 @@ async fn fetch(
     env: Env,
     _ctx: Context,
 ) -> Result<Response> {
-    BOT.sync_commands_once(&env).await?;
-
     BOT.handle(req, env).await
 }

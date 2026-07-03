@@ -1,5 +1,6 @@
 pub (crate) mod crypto;
 pub (crate) mod services;
+pub (crate) mod dev;
 
 pub mod bot;
 pub mod error;

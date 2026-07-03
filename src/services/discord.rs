@@ -5,7 +5,7 @@ use twilight_model::{
     channel::message::MessageFlags, http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType}, id::{Id, marker::{ApplicationMarker, InteractionMarker, UserMarker}}, user::User as TwilightUser
 };
 
-use crate::{error::{BotResult, Error}, models::{command::response::CommandResponse, user::User}, traits::component::IntoTwilight};
+use crate::{bot::Bot, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, user::User}, traits::component::IntoTwilight};
 
 
 
@@ -31,15 +31,19 @@ impl DiscordService {
         Self { client }
     }
 
-    pub (crate) async fn update_global_commands(
-        &self, 
-        application_id: &str, 
-        commands: &str
-    ) -> BotResult<()> {
+    pub (crate) async fn update_global_commands(&self, application_id: Id<ApplicationMarker>) -> BotResult<()> {
+        let bot = Bot::get_global();
+        
+        let serializable_commands: Vec<SerializableCommand<'_>> = bot.commands.values()
+            .map(|cmd| SerializableCommand(cmd))
+            .collect();
+
+        let serialized_commands = serde_json::to_string(&serializable_commands).map_err(|e| Error::JsonFailed(e))?;
+        
         let url = format!("{}/applications/{}/commands", BASE_URL, application_id);
 
         self.client.put(url)
-            .body(commands.to_string())
+            .body(serialized_commands)
             .send()
             .await?
             .error_for_status()?;
