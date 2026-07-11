@@ -1,27 +1,24 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock, OnceLock};
 
 use reqwest::{Client};
-use reqwest::header::{HeaderMap, HeaderValue};
 use twilight_model::application::interaction::Interaction as TwilightInteraction;
-use worker::{Env, Request, Response};
+use worker::{Env, Request, Response, Router};
 
 use crate::bot::builder::BotBuilder;
+use crate::crypto;
 use crate::models::command::Command;
 use crate::models::components::ComponentType;
 use crate::models::interaction::Interaction;
 use crate::models::modals::ModalType;
 use crate::error::Error;
-use crate::crypto;
-use crate::services::discord::DiscordService;
+use crate::utils::{has_api_access, is_interaction};
 
 pub mod builder;
 pub mod state;
 
-pub (crate) static HTTP_CLIENT: OnceLock<Arc<Client>> = OnceLock::new();
+pub (crate) static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
 static BOT: OnceLock<Arc<Bot>> = OnceLock::new();
-static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 #[allow(unused)]
 pub struct Bot {
@@ -30,35 +27,19 @@ pub struct Bot {
     pub (crate) modals: HashMap<String, ModalType>
 }
 
-#[allow(unused)]
 impl Bot {
     pub (crate) fn set_global(self) {
         let bot = Arc::new(self);
-        BOT.set(bot).map_err(|_| worker::console_debug!("Bot already initialized"));
+        BOT.set(bot)
+            .map_err(|_| ())
+            .expect("Bot already initialized")
     }
 
     pub (crate) fn get_global() -> Arc<Bot> {
         BOT.get().expect("Bot not initiliazed").clone()
     }
 
-    pub (crate) fn ensure_global_client(&self, token: &str) -> &Arc<Client> {
-        if let Some(client) = HTTP_CLIENT.get() {
-            return client
-        }
-
-        let mut headers = HeaderMap::new();
-        headers.insert("Authorization", HeaderValue::from_str(&format!("Bot {}", token)).expect("Error parsing header value"));
-        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-
-        let client = Client::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Error building reqwest::Client");
-
-        HTTP_CLIENT.set(Arc::new(client));
-        HTTP_CLIENT.get().expect("Client to be set")
-    }
-
+    #[allow(unused)]
     pub (crate) fn new() -> Arc<Bot> {
         let bot = Self {
             commands: HashMap::new(),
@@ -69,34 +50,7 @@ impl Bot {
         Bot::get_global()
     }
 
-    #[deprecated]
-    pub (crate) async fn sync_commands_once(&self, env: &Env) -> worker::Result<bool> {
-        if IS_INITIALIZED.load(Ordering::Relaxed) {
-            worker::console_debug!("Command synchronization not necessary");
-            return Ok(true);
-        }
-
-        worker::console_debug!("Launching command synchronization");
-
-        let application_id = env.secret("DISCORD_BOT_APPLICATION_ID")
-            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
-            .to_string();
-
-        let token = env.secret("DISCORD_BOT_TOKEN")
-            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
-            .to_string();
-
-        let client = self.ensure_global_client(&token);
-
-        let discord_service = DiscordService::get_or_init(client.clone());
-        //discord_service.update_global_commands().await?;
-
-        IS_INITIALIZED.store(true, Ordering::Relaxed);
-
-        Ok(false)
-    }
-
-    pub async fn handle(&self, mut req: Request, env: Env) -> worker::Result<Response> {
+    pub async fn handle_commands(&self, mut req: Request, env: Env) -> worker::Result<Response> {
         let body = req.bytes().await?;
         let headers = req.headers();
 
@@ -104,7 +58,10 @@ impl Bot {
             .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
             .to_string();
     
-        let is_valid = crypto::verify_signature(headers, &body, &public_key)?;
+        let is_valid = match crypto::verify_signature(headers, &body, &public_key) {
+            Err(e) => return e.as_response(),
+            Ok(value) => value
+        };
 
         if !is_valid {
             return Response::error("Unauthorized", 401);
@@ -113,12 +70,6 @@ impl Bot {
         let tw_interaction: TwilightInteraction = serde_json::from_slice(&body)?;
         let interaction = Interaction::from(tw_interaction);
 
-        let token = env.secret("DISCORD_BOT_TOKEN")
-            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
-            .to_string();
-
-        self.ensure_global_client(&token);
-
         match interaction.perform(env).await {
             Ok(response) => Ok(response),
             Err(e) => {
@@ -126,6 +77,32 @@ impl Bot {
                 e.as_response()
             }
         }
+    }
+
+    pub async fn handle_api(&self, req: Request, env: Env) -> worker::Result<Response> {
+        let headers = req.headers();
+        let token = env.secret("DISCORD_BOT_TOKEN")
+            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
+            .to_string();
+
+        if !has_api_access(headers, &token) {
+            return Response::error("Unauthorized", 401);
+        }
+
+        Router::new()
+            .on_async("/", async |_, _| Response::error("Not found", 404))
+            .run(req, env)
+            .await
+    }
+
+    pub async fn handle(&self, req: Request, env: Env) -> worker::Result<Response> {
+        let headers = req.headers();
+       
+        if is_interaction(headers) {
+            return self.handle_commands(req, env).await
+        }
+
+        self.handle_api(req, env).await
     }
 }
 

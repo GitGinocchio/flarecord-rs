@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use twilight_model::{application::interaction::{Interaction as TwilightInteraction, InteractionType}, http::interaction::{InteractionResponse, InteractionResponseType}};
 use worker::{Env, Response};
 
-use crate::{bot::{Bot, HTTP_CLIENT, state::BotState}, error::{BotResult, Error}, models::{autocomplete::{context::AutocompleteContext, dispatcher::AutocompleteDispatcher, interaction::AutocompleteInteraction}, command::{context::CommandContext, dispatcher::CommandDispatcher, interaction::CommandInteraction}, components::{context::ComponentContext, dispatcher::ComponentDispatcher, interaction::ComponentInteraction}, modals::{context::ModalContext, interaction::ModalInteraction}}, services::discord::DiscordService, traits::component::IntoTwilight};
+use crate::{bot::{Bot, state::BotState}, error::{BotResult, Error}, models::{autocomplete::{context::AutocompleteContext, dispatcher::AutocompleteDispatcher, interaction::AutocompleteInteraction}, command::{context::CommandContext, dispatcher::CommandDispatcher, interaction::CommandInteraction}, components::{context::ComponentContext, dispatcher::ComponentDispatcher, interaction::ComponentInteraction}, modals::{context::ModalContext, interaction::ModalInteraction}}, services::discord::DiscordService, traits::component::IntoTwilight};
 
 #[allow(unused)]
 pub (crate) struct Interaction(TwilightInteraction);
@@ -40,8 +40,7 @@ impl Interaction {
             return Err(Error::CommandNotFound(format!("{}", command_interaction.data.0.name)))
         };
 
-        let http_client = HTTP_CLIENT.get().expect("HTTP_CLIENT not initialized!");
-        let discord_service = DiscordService::get_or_init(http_client.clone());
+        let discord_service = DiscordService::get_or_init(command_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = CommandContext::new(bot_state, env, discord_service);
@@ -67,8 +66,7 @@ impl Interaction {
             return Err(Error::CommandNotFound(format!("{}", autocomplete_interaction.data.0.name)))
         };
 
-        let http_client = HTTP_CLIENT.get().expect("HTTP_CLIENT not initialized!");
-        let discord_service = DiscordService::get_or_init(http_client.clone());
+        let discord_service = DiscordService::get_or_init(autocomplete_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = AutocompleteContext::new(bot_state, env, discord_service);
@@ -92,8 +90,7 @@ impl Interaction {
             return Err(Error::ModalNotFound(format!("{}", modal_interaction.data.custom_id)))
         };
 
-        let http_client = HTTP_CLIENT.get().expect("HTTP_CLIENT not initialized!");
-        let discord_service = DiscordService::get_or_init(http_client.clone());
+        let discord_service = DiscordService::get_or_init(modal_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = ModalContext::new(bot_state, env, discord_service);
@@ -112,8 +109,7 @@ impl Interaction {
             return Err(Error::ComponentNotFound(format!("{}", component_interaction.data.custom_id)))
         };
 
-        let http_client = HTTP_CLIENT.get().expect("HTTP_CLIENT not initialized!");
-        let discord_service = DiscordService::get_or_init(http_client.clone());
+        let discord_service = DiscordService::get_or_init(component_interaction.token.clone());
         let ctx = ComponentContext::new(bot.clone(), env, discord_service);
 
         match ComponentDispatcher::dispatch(component, component_interaction, ctx).await {

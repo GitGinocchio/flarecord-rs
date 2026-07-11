@@ -1,11 +1,20 @@
 use std::sync::{Arc, OnceLock};
 
-use reqwest::Client;
+use reqwest::{Method, RequestBuilder};
 use twilight_model::{
-    channel::message::MessageFlags, http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType}, id::{Id, marker::{ApplicationMarker, InteractionMarker, UserMarker}}, user::User as TwilightUser
+    http::interaction::InteractionResponseType, 
+    id::{
+        Id, 
+        marker::{
+            ApplicationMarker, 
+            InteractionMarker, 
+            UserMarker
+        }
+    }, 
+    user::User as TwilightUser
 };
 
-use crate::{bot::Bot, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, user::User}, traits::component::IntoTwilight};
+use crate::{bot::{Bot, HTTP_CLIENT}, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, user::User}, traits::component::IntoTwilight};
 
 
 
@@ -15,20 +24,24 @@ const BASE_URL: &str = concat!("https://discord.com/api/v", "10");
 
 #[allow(unused)]
 pub struct DiscordService {
-    client: Arc<Client>
+    token: String
 }
 
-#[allow(unused)]
 impl DiscordService {
-    pub (crate) fn get_or_init(client: Arc<Client>) -> Arc<DiscordService> {
-        DISCORD_SERVICE.get_or_init(|| {
-            let service = DiscordService::new(client);
-            Arc::new(service)
-        }).clone()
+    pub (crate) fn get_or_init(token: String) -> Arc<DiscordService> {
+        DISCORD_SERVICE.get_or_init(|| Arc::new(Self::new(token))).clone()
     }
 
-    pub (crate) fn new(client: Arc<Client>) -> Self {
-        Self { client }
+    pub (crate) fn new(token: String) -> Self {
+        Self {
+            token: token
+        }
+    }
+
+    pub (crate) fn request(&self, method: Method, url: String) -> RequestBuilder {
+        HTTP_CLIENT.request(method, url)
+            .header("Authorization", format!("Bot {}", self.token))
+            .header("Content-Type", "application/json")
     }
 
     pub (crate) async fn update_global_commands(&self, application_id: Id<ApplicationMarker>) -> BotResult<()> {
@@ -41,8 +54,7 @@ impl DiscordService {
         let serialized_commands = serde_json::to_string(&serializable_commands).map_err(|e| Error::JsonFailed(e))?;
         
         let url = format!("{}/applications/{}/commands", BASE_URL, application_id);
-
-        self.client.put(url)
+        HTTP_CLIENT.request(Method::PUT, url)
             .body(serialized_commands)
             .send()
             .await?
@@ -65,7 +77,7 @@ impl DiscordService {
             payload.set_ephemeral(ephemeral);
         }
 
-        let response = self.client.post(url)
+        let response = self.request(Method::POST, url)
             .json(&payload.into_twilight())
             .send()
             .await?;
@@ -86,7 +98,7 @@ impl DiscordService {
 
         worker::console_debug!("response_edit_payload: {update_payload:#?}");
 
-        let response = self.client.patch(url)
+        let response = self.request(Method::PATCH, url)
             .json(&update_payload)
             .send()
             .await?;
@@ -104,7 +116,7 @@ impl DiscordService {
     pub async fn fetch_user(&self, user_id: &Id<UserMarker>) -> BotResult<User> {
         let endpoint = format!("{}/users/{}", BASE_URL, user_id);
 
-        let user: TwilightUser = self.client.get(endpoint)
+        let user: TwilightUser = self.request(Method::GET, endpoint)
             .send()
             .await?
             .json()

@@ -14,15 +14,12 @@ use crate::{
     }
 };
 
-
-#[allow(unused)]
 pub struct BotBuilder {
     pub (crate) commands: HashMap<String, Arc<dyn Command>>,
     pub (crate) components: HashMap<String, ComponentType>,
     pub (crate) modals: HashMap<String, ModalType>
 }
 
-#[allow(unused)]
 impl BotBuilder {
     pub fn new() -> Self {
         Self {
@@ -32,7 +29,7 @@ impl BotBuilder {
         }
     }
 
-    pub fn enable_dev_commands(mut self) -> Self {
+    pub fn enable_dev_commands(self) -> Self {
         self.register_command(DevCommands)
     }
 
