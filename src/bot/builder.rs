@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    bot::Bot, dev::DevCommands, error::BotResult, models::{
+    CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
             Command,
             CommandHandler, 
@@ -62,7 +62,12 @@ impl BotBuilder {
         self
     }
 
-    pub fn build(self) -> Arc<Bot> {
+    pub fn build(mut self) -> Arc<Bot> {
+        for reg in inventory::iter::<CommandRegistration> {
+            let cmd = (reg.constructor)();
+            self.commands.insert(cmd.name().to_string(), cmd);
+        }
+
         Bot::from(self).set_global();
 
         Bot::get_global()

@@ -1,4 +1,5 @@
 use hex::FromHexError;
+use serde_json::json;
 use thiserror::Error;
 use worker::Response;
 
@@ -74,7 +75,23 @@ pub enum Error {
 impl Error {
     pub fn as_response(self) -> worker::Result<Response> {
         worker::console_error!("Error: {self:?}");
-        Response::error(format!("Error: {:?}", self), 500)
+
+        match self {
+            Self::ReqwestError(error) => {
+                let status = error.status().map(|s| s.as_u16());
+
+                Response::builder()
+                    .with_status(status.unwrap_or(500))
+                    .from_json(&json!({
+                        "status" : "error",
+                        "code" : error.status().map(|s| s.as_str().to_string()),
+                        "message" : error.to_string()
+                    }))
+            },
+            _ => {
+                Response::error(format!("Error: {:?}", self), 500)
+            }
+        }
     }
 }
 

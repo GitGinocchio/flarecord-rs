@@ -25,7 +25,6 @@ pub mod option;
 pub mod interaction;
 pub mod context;
 
-
 pub type CommandType = Arc<dyn Command>;
 
 pub type CommandOptions = Option<Vec<CommandOption>>;

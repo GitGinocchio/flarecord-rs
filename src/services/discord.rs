@@ -1,3 +1,4 @@
+
 use std::sync::{Arc, OnceLock};
 
 use reqwest::{Method, RequestBuilder};
@@ -16,13 +17,9 @@ use twilight_model::{
 
 use crate::{bot::{Bot, HTTP_CLIENT}, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, user::User}, traits::component::IntoTwilight};
 
-
-
 pub (crate) static DISCORD_SERVICE: OnceLock<Arc<DiscordService>> = OnceLock::new();
-
 const BASE_URL: &str = concat!("https://discord.com/api/v", "10");
 
-#[allow(unused)]
 pub struct DiscordService {
     token: String
 }
@@ -54,7 +51,7 @@ impl DiscordService {
         let serialized_commands = serde_json::to_string(&serializable_commands).map_err(|e| Error::JsonFailed(e))?;
         
         let url = format!("{}/applications/{}/commands", BASE_URL, application_id);
-        HTTP_CLIENT.request(Method::PUT, url)
+        self.request(Method::PUT, url)
             .body(serialized_commands)
             .send()
             .await?

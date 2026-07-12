@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 
-use crate::bot::Bot;
 use crate::models::command::response::CommandResponse;
 use crate::models::components::context::ComponentContext;
 use crate::models::components::interaction::ComponentInteraction;

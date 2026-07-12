@@ -1,8 +1,11 @@
-use flarecord::{models::{color::Color, components::{content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay, thumbnail::Thumbnail}, interactive::select::Select, layout::{action_row::{ActionRow, IntoActionRow}, container::Container, section::Section}}}, prelude::*};
+use flarecord::{ 
+    prelude::*
+};
 use async_trait::async_trait;
 
 use crate::components::mycomponent::MyComponent;
 
+#[flarecord::command]
 pub struct Hello;
 
 #[async_trait(?Send)]

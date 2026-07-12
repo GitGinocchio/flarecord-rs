@@ -1,10 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{error::BotResult, models::command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}};
-
-
-
-
+use crate::{error::{BotResult, Error}, models::command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, services::discord::DiscordService};
 
 pub struct SyncCommand;
 
@@ -19,8 +15,16 @@ impl Subcommand for SyncCommand {
     }
 
     async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
-        ctx.discord.update_global_commands(interaction.application_id).await?;
+        let token = ctx.env.secret("DISCORD_BOT_TOKEN")
+            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
+            .to_string();
+
+        let service = DiscordService::new(token);
+
+        service.update_global_commands(interaction.application_id).await?;
+
         Ok(CommandResponse::builder()
+            .ephemeral()
             .content(format!("Commands sync completed successfully!"))
             .build())
     }

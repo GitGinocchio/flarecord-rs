@@ -9,10 +9,20 @@ members = [
     "examples/subcommands",
     "examples/components",
     "examples/simple",
-    "."
+    ".", 
+    "flarecord-macros"
 ]
 
+[features]
+# La feature 'macros' è abilitata di default
+default = ["macros"]
+# 'macros' abilita la dipendenza da flarecord-macros
+macros = ["dep:flarecord-macros"]
+
 [dependencies]
+flarecord-macros = { path = "./flarecord-macros", optional = true }
+inventory = "0.3"
+
 worker = "^0.8"
 reqwest = { version = "^0.13", features = [ "json" ] }
 async-trait = "^0.1"

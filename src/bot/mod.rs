@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 
 use reqwest::{Client};
 use twilight_model::application::interaction::Interaction as TwilightInteraction;
-use worker::{Env, Request, Response, Router};
+use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
 use crate::crypto;
@@ -39,15 +39,8 @@ impl Bot {
         BOT.get().expect("Bot not initiliazed").clone()
     }
 
-    #[allow(unused)]
-    pub (crate) fn new() -> Arc<Bot> {
-        let bot = Self {
-            commands: HashMap::new(),
-            components: HashMap::new(),
-            modals: HashMap::new()
-        };
-        bot.set_global();
-        Bot::get_global()
+    pub fn new() -> Arc<Bot> {
+        BotBuilder::new().build()
     }
 
     pub async fn handle_commands(&self, mut req: Request, env: Env) -> worker::Result<Response> {
@@ -89,10 +82,13 @@ impl Bot {
             return Response::error("Unauthorized", 401);
         }
 
-        Router::new()
-            .on_async("/", async |_, _| Response::error("Not found", 404))
-            .run(req, env)
-            .await
+        let endpoint = req.path();
+        let segments: Vec<&str> = endpoint.split('/').filter(|s| !s.is_empty()).collect();
+
+        match segments.as_slice() {
+            [.., "sync"] => crate::api::sync::sync(env, token).await,
+            _ => Response::error("Not found", 404)
+        }
     }
 
     pub async fn handle(&self, req: Request, env: Env) -> worker::Result<Response> {
