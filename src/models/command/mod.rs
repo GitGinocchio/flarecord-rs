@@ -52,21 +52,21 @@ pub trait Command: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    async fn autocomplete(
+    fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
         _ctx: AutocompleteContext
-    ) -> BotResult<AutocompleteResponse> {
+    ) -> impl std::future::Future<Output = BotResult<AutocompleteResponse>> + Send {async {
         Err(Error::AutocompleteNotImplemented(self.name()))
-    }
+    } }
 
-    async fn execute(
+    fn execute(
         &self, 
         _interaction: CommandInteraction, 
         _ctx: CommandContext
-    ) -> BotResult<CommandResponse> {
+    ) -> impl std::future::Future<Output = BotResult<CommandResponse>> + Send {async {
         Err(Error::ExecuteNotImplemented(self.name()))
-    }
+    } }
 }
 
 
@@ -82,21 +82,21 @@ pub trait Subcommand: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    async fn autocomplete(
+    fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
         _ctx: AutocompleteContext
-    ) -> BotResult<AutocompleteResponse> {
+    ) -> impl std::future::Future<Output = BotResult<AutocompleteResponse>> + Send {async {
         Err(Error::AutocompleteNotImplemented(self.name()))
-    }
+    } }
 
-    async fn execute(
+    fn execute(
         &self, 
         _interaction: CommandInteraction, 
         _ctx: CommandContext
-    ) -> BotResult<CommandResponse> {
+    ) -> impl std::future::Future<Output = BotResult<CommandResponse>> + Send {async {
         Err(Error::ExecuteNotImplemented(self.name()))
-    }
+    } }
 }
 
 #[dynosaur(DynSubcommandGroup = dyn(box) SubcommandGroup)]

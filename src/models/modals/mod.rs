@@ -19,7 +19,7 @@ pub trait Modal: Send + Sync {
 
     fn components(&self) -> Vec<()>;
 
-    async fn on_submit(&self, interaction: ModalInteraction, ctx: ModalContext) -> BotResult<()>;
+    fn on_submit(&self, interaction: ModalInteraction, ctx: ModalContext) -> impl std::future::Future<Output = BotResult<()>> + Send;
 }
 
 pub trait IntoModal {

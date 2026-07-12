@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     error::{BotResult, Error}, models::{ 
         autocomplete::{

@@ -71,5 +71,5 @@ pub trait Component: Send + Sync {
 
     fn build(&self) -> RootComponent;
 
-    async fn handle(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> BotResult<CommandResponse>;
+    fn handle(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> impl std::future::Future<Output = BotResult<CommandResponse>> + Send;
 }

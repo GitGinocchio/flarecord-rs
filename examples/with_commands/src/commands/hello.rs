@@ -4,8 +4,6 @@ use flarecord::{
 
 use crate::components::mycomponent::MyComponent;
 
-
-
 #[flarecord::command]
 impl Command for Hello {
     fn name(&self) -> String {
