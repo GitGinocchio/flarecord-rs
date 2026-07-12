@@ -1,14 +1,12 @@
-use async_trait::async_trait;
 use twilight_model::guild::Permissions;
 
-use crate::{dev::sync::SyncCommand, models::command::{Command, SubcommandType}};
+use crate::{dev::sync::SyncCommand, models::command::{Command, IntoSubcommand, SubcommandType}};
 
 pub mod sync;
 
 
 pub struct DevCommands;
 
-#[async_trait(?Send)]
 impl Command for DevCommands {
     fn name(&self) -> String {
         "dev".into()
@@ -24,7 +22,7 @@ impl Command for DevCommands {
 
     fn subcommands(&self) -> Vec<SubcommandType> {
         vec![
-            Box::new(SyncCommand)
+            SyncCommand.into_subcommand()
         ]
     }
 }

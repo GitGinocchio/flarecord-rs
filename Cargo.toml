@@ -38,6 +38,7 @@ hex = "^0.4"
 
 ed25519-dalek = "^3.0"
 rand = "0.10.1"
+dynosaur = "0.3.1"
 
 [dependencies.getrandom]
 version = "0.4"

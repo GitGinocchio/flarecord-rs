@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
+use dynosaur::dynosaur;
 
 use crate::models::command::response::CommandResponse;
 use crate::models::components::context::ComponentContext;
@@ -19,19 +20,19 @@ pub mod data;
 pub mod layout;
 pub mod interactive;
 
-pub type ComponentType = Arc<dyn Component>;
+pub type ComponentType = Arc<DynComponent<'static>>;
 
 impl<C: Component + 'static> IntoComponent for C {
-    fn into_component(self) -> Arc<dyn Component> {
-        Arc::new(self)
+    fn into_component(self) -> ComponentType {
+        DynComponent::new_arc(self)
     }
 }
 
 impl IntoComponent for LayoutComponent {
-    fn into_component(self) -> Arc<dyn Component> {
+    fn into_component(self) -> ComponentType {
         let mut root = RootComponent::new();
         root.add(self);
-        Arc::new(RootComponentHandler::new(root))
+        RootComponentHandler::new(root).into_component()
     }
 }
 
@@ -47,7 +48,6 @@ impl RootComponentHandler {
     }
 }
 
-#[async_trait(?Send)]
 impl Component for RootComponentHandler {
     fn id(&self) -> String {
         "test".into()
@@ -66,7 +66,7 @@ impl Component for RootComponentHandler {
     }
 }
 
-#[async_trait(?Send)]
+#[dynosaur(DynComponent = dyn(box) Component)]
 pub trait Component: Send + Sync {
     fn id(&self) -> String;
 

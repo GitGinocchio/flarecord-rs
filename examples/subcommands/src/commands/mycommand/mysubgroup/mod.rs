@@ -1,4 +1,4 @@
-use flarecord::models::command::{SubcommandGroup, SubcommandType};
+use flarecord::models::command::{IntoSubcommand, SubcommandGroup, SubcommandType};
 
 pub mod subcommand;
 
@@ -17,6 +17,6 @@ impl SubcommandGroup for MySubcommandGroup {
     }
 
     fn subcommands(&self) -> Vec<SubcommandType> { vec![
-        Box::new(MySubcommand)
+        MySubcommand.into_subcommand()
     ]}
 }

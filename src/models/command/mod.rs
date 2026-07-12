@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use async_trait::async_trait;
+use dynosaur::dynosaur;
 use twilight_model::{application::interaction::InteractionContextType, guild::Permissions, id::{Id, marker::GuildMarker}, oauth::ApplicationIntegrationType};
 
 use crate::{
@@ -25,15 +25,13 @@ pub mod option;
 pub mod interaction;
 pub mod context;
 
-pub type CommandType = Arc<dyn Command>;
+pub type CommandType = Arc<DynCommand<'static>>;
+pub type SubcommandType = Arc<DynSubcommand<'static>>;
+pub type SubcommandGroupType = Arc<DynSubcommandGroup<'static>>;
 
 pub type CommandOptions = Option<Vec<CommandOption>>;
 
-pub type SubcommandType = Box<dyn Subcommand>;
-pub type SubcommandGroupType = Box<dyn SubcommandGroup>;
-
-#[async_trait(?Send)]
-#[allow(unused)]
+#[dynosaur(DynCommand = dyn(box) Command)]
 pub trait Command: Send + Sync {
     fn name(&self) -> String;
     fn name_localizations(&self) -> Option<HashMap<String, String>> { None }
@@ -54,17 +52,25 @@ pub trait Command: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    async fn autocomplete(&self, interaction: AutocompleteInteraction, ctx: AutocompleteContext) -> BotResult<AutocompleteResponse> {
+    async fn autocomplete(
+        &self, 
+        _interaction: AutocompleteInteraction, 
+        _ctx: AutocompleteContext
+    ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
     }
 
-    async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(
+        &self, 
+        _interaction: CommandInteraction, 
+        _ctx: CommandContext
+    ) -> BotResult<CommandResponse> {
         Err(Error::ExecuteNotImplemented(self.name()))
     }
 }
 
-#[async_trait(?Send)]
-#[allow(unused)]
+
+#[dynosaur(DynSubcommand = dyn(box) Subcommand)]
 pub trait Subcommand: Send + Sync {
     fn name(&self) -> String;
     fn name_localizations(&self) -> Option<HashMap<String, String>> { None }
@@ -76,15 +82,24 @@ pub trait Subcommand: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    async fn autocomplete(&self, interaction: AutocompleteInteraction, ctx: AutocompleteContext) -> BotResult<AutocompleteResponse> {
+    async fn autocomplete(
+        &self, 
+        _interaction: AutocompleteInteraction, 
+        _ctx: AutocompleteContext
+    ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
     }
 
-    async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse>;
+    async fn execute(
+        &self, 
+        _interaction: CommandInteraction, 
+        _ctx: CommandContext
+    ) -> BotResult<CommandResponse> {
+        Err(Error::ExecuteNotImplemented(self.name()))
+    }
 }
 
-#[async_trait(?Send)]
-#[allow(unused)]
+#[dynosaur(DynSubcommandGroup = dyn(box) SubcommandGroup)]
 pub trait SubcommandGroup: Send + Sync {
     fn name(&self) -> String;
     fn name_localizations(&self) -> Option<HashMap<String, String>> { None }
@@ -115,7 +130,6 @@ impl<F, Fut> CommandHandler<F, Fut> {
     }
 }
 
-#[async_trait(?Send)]
 impl<F, Fut> Command for CommandHandler<F, Fut> 
 where 
     F: Fn(CommandInteraction, CommandContext) -> Fut + Send + Sync + 'static,
@@ -126,5 +140,35 @@ where
 
     async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
         (self.handler)(interaction, ctx).await
+    }
+}
+
+pub trait IntoSubcommandGroup {
+    fn into_subcommand_group(self) -> SubcommandGroupType;
+}
+
+impl<S: SubcommandGroup + 'static> IntoSubcommandGroup for S {
+    fn into_subcommand_group(self) -> SubcommandGroupType {
+        DynSubcommandGroup::new_arc(self)
+    }
+}
+
+pub trait IntoSubcommand {
+    fn into_subcommand(self) -> SubcommandType;
+}
+
+impl<S: Subcommand + 'static> IntoSubcommand for S {
+    fn into_subcommand(self) -> SubcommandType {
+        DynSubcommand::new_arc(self)
+    }
+}
+
+pub trait IntoCommand {
+    fn into_command(self) -> CommandType;
+}
+
+impl<S: Command + 'static> IntoCommand for S {
+    fn into_command(self) -> CommandType {
+        DynCommand::new_arc(self)
     }
 }

@@ -1,9 +1,8 @@
 use flarecord::{models::command::Subcommand, prelude::*};
-use async_trait::async_trait;
+
 
 pub struct MySubcommand;
 
-#[async_trait(?Send)]
 impl Subcommand for MySubcommand {
     fn name(&self) -> String {
         "mycommand".into()

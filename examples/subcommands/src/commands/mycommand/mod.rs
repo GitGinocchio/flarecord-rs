@@ -1,5 +1,4 @@
-use flarecord::{models::command::{SubcommandGroupType, SubcommandType}, prelude::*};
-use async_trait::async_trait;
+use flarecord::{models::command::{IntoSubcommandGroup, SubcommandGroupType, SubcommandType}, prelude::*};
 
 use crate::commands::mycommand::subcommand::MySubcommand;
 use crate::commands::mycommand::mysubgroup::MySubcommandGroup;
@@ -7,9 +6,8 @@ use crate::commands::mycommand::mysubgroup::MySubcommandGroup;
 pub mod mysubgroup;
 pub mod subcommand;
 
-pub struct MyCommand;
 
-#[async_trait(?Send)]
+#[flarecord::command]
 impl Command for MyCommand {
     fn name(&self) -> String {
         "mycommand".into()
@@ -20,11 +18,11 @@ impl Command for MyCommand {
     }
 
     fn groups(&self) -> Vec<SubcommandGroupType> { vec![
-        Box::new(MySubcommandGroup)
+        MySubcommandGroup.into_subcommand_group()
     ]}
 
     fn subcommands(&self) -> Vec<SubcommandType> { vec![
-        Box::new(MySubcommand),
+        MySubcommand.into_subcommand(),
     ]}
 
     /* Execute method will not receive interactions anymore when using subcommands!

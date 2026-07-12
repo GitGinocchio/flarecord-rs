@@ -5,12 +5,10 @@ use worker::*;
 use flarecord::bot::{Bot, builder::BotBuilder};
 
 mod commands;
-use commands::mycommand::MyCommand;
 
 static BOT: LazyLock<Arc<Bot>> = LazyLock::new(|| {
     BotBuilder::new()
         .enable_dev_commands()
-        .register_command(MyCommand)
         .build()
 });
 

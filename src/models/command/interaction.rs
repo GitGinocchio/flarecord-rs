@@ -30,7 +30,7 @@ use twilight_model::{
     oauth::ApplicationIntegrationMap
 };
 
-use crate::{error::{BotResult, Error}, models::{command::{data::CommandData, response::CommandResponse}, interaction::Interaction, user::{User, UserRef}}, services::discord::{DISCORD_SERVICE, DiscordService}};
+use crate::{error::{BotResult, Error}, models::{command::{data::CommandData, response::CommandResponse}, interaction::Interaction, user::{User, UserRef}}, services::discord::{DISCORD_SERVICE}};
 
 #[allow(unused)]
 pub struct CommandInteraction {

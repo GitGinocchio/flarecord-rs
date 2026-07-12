@@ -1,14 +1,12 @@
 use flarecord::{ 
     prelude::*
 };
-use async_trait::async_trait;
 
 use crate::components::mycomponent::MyComponent;
 
-#[flarecord::command]
-pub struct Hello;
 
-#[async_trait(?Send)]
+
+#[flarecord::command]
 impl Command for Hello {
     fn name(&self) -> String {
         "hello".into()

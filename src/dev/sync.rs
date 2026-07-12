@@ -1,10 +1,7 @@
-use async_trait::async_trait;
-
 use crate::{error::{BotResult, Error}, models::command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, services::discord::DiscordService};
 
 pub struct SyncCommand;
 
-#[async_trait(?Send)]
 impl Subcommand for SyncCommand {
     fn name(&self) -> String {
         "sync".into()

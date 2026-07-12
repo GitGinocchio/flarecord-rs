@@ -1,11 +1,8 @@
 use flarecord::{models::components::{interactive::button::Button, layout::action_row::{ActionRow, IntoActionRow}}, prelude::*};
-use async_trait::async_trait;
 
 use crate::components::mycomponent::MyComponent;
 
-pub struct Hello;
-
-#[async_trait(?Send)]
+#[flarecord::command]
 impl Command for Hello {
     fn name(&self) -> String {
         "hello".into()

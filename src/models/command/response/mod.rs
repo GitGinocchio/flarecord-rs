@@ -14,11 +14,8 @@ use twilight_model::{
 
 use crate::{
     models::{
-        attachment::outgoing::Attachment,
-        command::response::builder::CommandResponseBuilder, 
-        embed::Embed
-    }, 
-    traits::component::{
+        attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::Component, embed::Embed
+    }, traits::component::{
         IntoComponent, 
         IntoTwilight
     }

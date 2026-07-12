@@ -10,10 +10,10 @@ use twilight_model::{
 };
 use serde::ser::Error as SerdeError;
 
-use crate::models::command::{CommandType, Subcommand};
+use crate::models::command::{Command, CommandType, Subcommand, SubcommandGroup, SubcommandType};
 
 fn serialize_subcommands<S>(
-    subcommands: &Vec<Box<dyn Subcommand>>
+    subcommands: &Vec<SubcommandType>
 ) -> Result<Vec<TwilightCommandOption>, S::Error> where S: Serializer {
     let mut serialized: Vec<TwilightCommandOption> = Vec::new();
 

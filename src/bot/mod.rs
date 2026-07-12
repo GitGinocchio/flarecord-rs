@@ -7,7 +7,7 @@ use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
 use crate::crypto;
-use crate::models::command::Command;
+use crate::models::command::{Command, CommandType};
 use crate::models::components::ComponentType;
 use crate::models::interaction::Interaction;
 use crate::models::modals::ModalType;
@@ -22,7 +22,7 @@ static BOT: OnceLock<Arc<Bot>> = OnceLock::new();
 
 #[allow(unused)]
 pub struct Bot {
-    pub (crate) commands: HashMap<String, Arc<dyn Command>>,
+    pub (crate) commands: HashMap<String, CommandType>,
     pub (crate) components: HashMap<String, ComponentType>,
     pub (crate) modals: HashMap<String, ModalType>
 }
@@ -30,9 +30,7 @@ pub struct Bot {
 impl Bot {
     pub (crate) fn set_global(self) {
         let bot = Arc::new(self);
-        BOT.set(bot)
-            .map_err(|_| ())
-            .expect("Bot already initialized")
+        BOT.set(bot).ok().expect("Bot already initialized")
     }
 
     pub (crate) fn get_global() -> Arc<Bot> {

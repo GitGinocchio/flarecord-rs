@@ -11,7 +11,9 @@ pub use crate::models::command::{
     context::CommandContext,
     data::CommandData,
     CommandOptions,
-    Command
+    Command,
+    IntoCommand,
+    IntoSubcommand
 };
 pub use crate::models::attachment::{builder::AttachmentBuilder, outgoing::Attachment};
 pub use crate::models::components::{

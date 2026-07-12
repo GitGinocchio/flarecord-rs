@@ -3,19 +3,13 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{
     CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
-            Command,
-            CommandHandler, 
-            context::CommandContext, 
-            interaction::CommandInteraction, 
-            response::CommandResponse
-        }, 
-        components::{Component, ComponentType}, 
-        modals::{Modal, ModalType}
-    }
+            Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
+        }, components::{Component, ComponentType}, modals::{Modal, ModalType}
+    }, traits::component::IntoComponent
 };
 
 pub struct BotBuilder {
-    pub (crate) commands: HashMap<String, Arc<dyn Command>>,
+    pub (crate) commands: HashMap<String, CommandType>,
     pub (crate) components: HashMap<String, ComponentType>,
     pub (crate) modals: HashMap<String, ModalType>
 }
@@ -34,7 +28,7 @@ impl BotBuilder {
     }
 
     pub fn register_component(mut self, component: impl Component + 'static) -> Self {
-        self.components.insert(component.id(), Arc::new(component));
+        self.components.insert(component.id(), component.into_component());
         self
     }
 
@@ -44,7 +38,7 @@ impl BotBuilder {
     }
 
     pub fn register_command(mut self, command: impl Command + 'static) -> Self {
-        self.commands.insert(command.name(), Arc::new(command));
+        self.commands.insert(command.name(), command.into_command());
         self
     }
 
@@ -58,7 +52,7 @@ impl BotBuilder {
         Fut: Future<Output = BotResult<CommandResponse>> + Send + Sync + 'static,
     {
         let handler = CommandHandler::new(name.into(), description.into(), handler);
-        self.commands.insert(handler.name.clone(), Arc::new(handler));
+        self.commands.insert(handler.name.clone(), handler.into_command());
         self
     }
 

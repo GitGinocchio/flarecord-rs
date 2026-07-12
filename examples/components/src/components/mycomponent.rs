@@ -20,7 +20,6 @@ use flarecord::{
 
 pub struct MyComponent;
 
-#[async_trait(?Send)]
 impl Component for MyComponent {
     fn id(&self) -> String {
         "mycomponent".into()
@@ -75,7 +74,7 @@ impl Component for MyComponent {
         root
     }
 
-    async fn handle(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> BotResult<CommandResponse> {
+    async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::new())
     }
 }
