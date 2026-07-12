@@ -7,7 +7,7 @@ use worker::{Env, Request, Response};
 
 use crate::bot::builder::BotBuilder;
 use crate::crypto;
-use crate::models::command::{Command, CommandType};
+use crate::models::command::CommandType;
 use crate::models::components::ComponentType;
 use crate::models::interaction::Interaction;
 use crate::models::modals::ModalType;
@@ -37,8 +37,14 @@ impl Bot {
         BOT.get().expect("Bot not initiliazed").clone()
     }
 
-    pub fn new() -> Arc<Bot> {
-        BotBuilder::new().build()
+    pub fn new(devcommands: bool) -> Arc<Bot> {
+        let mut builder = BotBuilder::new();
+
+        if devcommands {
+            builder = builder.enable_dev_commands();
+        }
+
+        builder.build()
     }
 
     pub async fn handle_commands(&self, mut req: Request, env: Env) -> worker::Result<Response> {
