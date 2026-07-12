@@ -25,7 +25,6 @@ inventory = "0.3"
 
 worker = "^0.8"
 reqwest = { version = "^0.13", features = [ "json" ] }
-async-trait = "^0.1"
 
 twilight-model = { version = "^0.17", default-features = false }
 twilight-validate = { version = "^0.17", default-features = false }
@@ -37,8 +36,8 @@ thiserror = "^2.0"
 hex = "^0.4"
 
 ed25519-dalek = "^3.0"
-rand = "0.10.1"
-dynosaur = "0.3.1"
+rand = "0.10"
+dynosaur = "0.3"
 
 [dependencies.getrandom]
 version = "0.4"

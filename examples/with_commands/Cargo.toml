@@ -13,6 +13,4 @@ crate-type = ["cdylib"]
 worker = { version = "0.8.5" }
 worker-macros = { version = "0.8.5" }
 
-async-trait = "0.1.89"
-
 flarecord = { path = "../../" }

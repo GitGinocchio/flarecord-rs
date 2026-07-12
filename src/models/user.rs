@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-use async_trait::async_trait;
 use twilight_model::id::{Id, marker::UserMarker};
 use twilight_model::user::User as TwilightUser;
 
@@ -63,7 +62,6 @@ impl<'a> Deref for UserRef<'a> {
     }
 }
 
-#[async_trait(?Send)]
 impl Resolvable<User> for Id<UserMarker> {
     async fn resolve(&self) -> BotResult<User> {
         let discord = DISCORD_SERVICE

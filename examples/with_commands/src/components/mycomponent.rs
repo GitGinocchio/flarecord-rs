@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use flarecord::{
     models::{ChannelType, SelectMenuType, components::{
         content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay, thumbnail::Thumbnail}, interactive::{button::{

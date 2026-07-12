@@ -4,7 +4,7 @@ use crate::{
     CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
             Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
-        }, components::{Component, ComponentType}, modals::{Modal, ModalType}
+        }, components::{Component, ComponentType}, modals::{IntoModal, Modal, ModalType}
     }, traits::component::IntoComponent
 };
 
@@ -33,7 +33,7 @@ impl BotBuilder {
     }
 
     pub fn register_modal(mut self, modal: impl Modal + 'static) -> Self {
-        self.modals.insert(modal.id(), Box::new(modal));
+        self.modals.insert(modal.id(), modal.into_modal());
         self
     }
 

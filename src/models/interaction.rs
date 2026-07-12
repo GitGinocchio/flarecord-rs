@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use twilight_model::{application::interaction::{Interaction as TwilightInteraction, InteractionType}, http::interaction::{InteractionResponse, InteractionResponseType}};
 use worker::{Env, Response};
 
-use crate::{bot::{Bot, state::BotState}, error::{BotResult, Error}, models::{autocomplete::{context::AutocompleteContext, dispatcher::AutocompleteDispatcher, interaction::AutocompleteInteraction}, command::{context::CommandContext, dispatcher::CommandDispatcher, interaction::CommandInteraction}, components::{context::ComponentContext, dispatcher::ComponentDispatcher, interaction::ComponentInteraction}, modals::{context::ModalContext, interaction::ModalInteraction}}, services::discord::DiscordService, traits::component::IntoTwilight};
+use crate::{bot::{Bot, state::BotState}, error::{BotResult, Error}, models::{autocomplete::{context::AutocompleteContext, dispatcher::AutocompleteDispatcher, interaction::AutocompleteInteraction}, command::{context::CommandContext, dispatcher::CommandDispatcher, interaction::CommandInteraction}, components::{context::ComponentContext, dispatcher::ComponentDispatcher, interaction::ComponentInteraction}, modals::{Modal, context::ModalContext, interaction::ModalInteraction}}, services::discord::DiscordService, traits::component::IntoTwilight};
 
 #[allow(unused)]
 pub (crate) struct Interaction(TwilightInteraction);
