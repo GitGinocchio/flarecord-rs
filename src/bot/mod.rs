@@ -94,6 +94,7 @@ impl Bot {
         match segments.as_slice() {
             [.., "sync"] => crate::api::sync::sync(env, token).await,
             [.., "health"] => crate::api::health::health(env, token).await,
+            [.., "version"] => crate::api::version::version(env).await,
             _ => Response::error("Not found", 404)
         }
     }

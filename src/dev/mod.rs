@@ -1,9 +1,9 @@
 use twilight_model::guild::Permissions;
 
-use crate::{dev::sync::SyncCommand, models::command::{Command, IntoSubcommand, SubcommandType}};
+use crate::{dev::{sync::SyncCommand, version::VersionCommand}, models::command::{Command, IntoSubcommand, SubcommandType}};
 
 pub mod sync;
-
+pub mod version;
 
 pub struct DevCommands;
 
@@ -22,7 +22,8 @@ impl Command for DevCommands {
 
     fn subcommands(&self) -> Vec<SubcommandType> {
         vec![
-            SyncCommand.into_subcommand()
+            SyncCommand.into_subcommand(),
+            VersionCommand.into_subcommand()
         ]
     }
 }

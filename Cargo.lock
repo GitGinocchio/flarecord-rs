@@ -334,8 +334,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "twilight-model",
- "twilight-util",
- "twilight-validate",
  "worker",
 ]
 
@@ -1709,25 +1707,6 @@ dependencies = [
  "serde-value",
  "serde_repr",
  "time",
-]
-
-[[package]]
-name = "twilight-util"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e71de79d48ce27aba1f591b10c84677f1317489c2ea154d9b8ed01efa8bceb53"
-dependencies = [
- "twilight-model",
- "twilight-validate",
-]
-
-[[package]]
-name = "twilight-validate"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6a27472e023e3841d1c4e4e20253ed796e8440aada8b5205b8544f1172e661d"
-dependencies = [
- "twilight-model",
 ]
 
 [[package]]

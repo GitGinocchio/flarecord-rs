@@ -181,11 +181,7 @@ impl IntoTwilight<TwilightComponent> for LayoutComponent {
 
 impl IntoTwilight<Vec<TwilightComponent>> for RootComponent {
     fn into_twilight(self) -> Vec<TwilightComponent> {
-        let max_count = if self.require_components_v2() {
-            twilight_validate::component::COMPONENT_COUNT
-        } else {
-            twilight_validate::component::COMPONENT_V2_COUNT
-        };
+        let max_count = if self.require_components_v2() { 5 } else { 40 };
 
         let components_count = self.count();
 
