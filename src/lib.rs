@@ -1,7 +1,6 @@
 pub (crate) mod crypto;
 pub (crate) mod utils;
 pub (crate) mod services;
-pub (crate) mod dev;
 pub (crate) mod api;
 
 pub mod bot;

@@ -4,6 +4,7 @@ pub mod components;
 pub mod attachment;
 pub mod command;
 pub mod modals;
+pub mod message;
 pub mod embed;
 pub mod color;
 pub mod user;

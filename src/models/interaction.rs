@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut};
+use std::{ops::{Deref, DerefMut}, sync::Arc};
 
 use twilight_model::{application::interaction::{Interaction as TwilightInteraction, InteractionType}, http::interaction::{InteractionResponse, InteractionResponseType}};
 use worker::{Env, Response};
@@ -11,11 +11,15 @@ pub (crate) struct Interaction(TwilightInteraction);
 #[allow(unused)]
 impl Interaction {
     pub (crate) async fn perform(self, env: Env) -> BotResult<Response> {
+        let token = env.secret("DISCORD_BOT_TOKEN")
+            .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
+            .to_string();
+
         match self.kind {
-            InteractionType::ApplicationCommandAutocomplete => self.handle_autocomplete(env).await,
-            InteractionType::ApplicationCommand => self.handle_command(env).await,
-            InteractionType::MessageComponent => self.handle_component(env).await,
-            InteractionType::ModalSubmit => self.handle_modal_submit(env).await,
+            InteractionType::ApplicationCommandAutocomplete => self.handle_autocomplete(env, &token).await,
+            InteractionType::ApplicationCommand => self.handle_command(env, &token).await,
+            InteractionType::MessageComponent => self.handle_component(env, &token).await,
+            InteractionType::ModalSubmit => self.handle_modal_submit(env, &token).await,
             InteractionType::Ping => self.handle_ping().await,
             _ => Ok(Response::empty()?)
         }
@@ -31,7 +35,7 @@ impl Interaction {
         Response::from_json(&value).map_err(Error::WorkerError)
     }
 
-    async fn handle_command(self, env: Env) -> BotResult<Response> {
+    async fn handle_command(self, env: Env, token: &str) -> BotResult<Response> {
         let command_interaction = CommandInteraction::try_from(self)?;
         
         let bot = Bot::get_global();
@@ -40,7 +44,8 @@ impl Interaction {
             return Err(Error::CommandNotFound(format!("{}", command_interaction.data.0.name)))
         };
 
-        let discord_service = DiscordService::get_or_init(command_interaction.token.clone());
+        let discord_service = DiscordService::get_or_init(token.into());
+        //let discord_service = DiscordService::new(command_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = CommandContext::new(bot_state, env, discord_service);
@@ -58,7 +63,7 @@ impl Interaction {
         }
     }
 
-    async fn handle_autocomplete(self, env: Env) -> BotResult<Response> {
+    async fn handle_autocomplete(self, env: Env, token: &str) -> BotResult<Response> {
         let autocomplete_interaction = AutocompleteInteraction::try_from(self)?;
 
         let bot = Bot::get_global();
@@ -66,7 +71,8 @@ impl Interaction {
             return Err(Error::CommandNotFound(format!("{}", autocomplete_interaction.data.0.name)))
         };
 
-        let discord_service = DiscordService::get_or_init(autocomplete_interaction.token.clone());
+        let discord_service = DiscordService::get_or_init(token.into());
+        //let discord_service = DiscordService::new(autocomplete_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = AutocompleteContext::new(bot_state, env, discord_service);
@@ -82,7 +88,7 @@ impl Interaction {
         }
     }
 
-    async fn handle_modal_submit(self, env: Env) -> BotResult<Response> {
+    async fn handle_modal_submit(self, env: Env, token: &str) -> BotResult<Response> {
         let modal_interaction = ModalInteraction::try_from(self)?;
 
         let bot = Bot::get_global();
@@ -90,7 +96,8 @@ impl Interaction {
             return Err(Error::ModalNotFound(format!("{}", modal_interaction.data.custom_id)))
         };
 
-        let discord_service = DiscordService::get_or_init(modal_interaction.token.clone());
+        let discord_service = DiscordService::get_or_init(token.into());
+        //let discord_service = DiscordService::new(modal_interaction.token.clone());
 
         let bot_state = BotState::new(bot.clone());
         let ctx = ModalContext::new(bot_state, env, discord_service);
@@ -101,7 +108,7 @@ impl Interaction {
         }
     }
 
-    async fn handle_component(self, env: Env) -> BotResult<Response> {
+    async fn handle_component(self, env: Env, token: &str) -> BotResult<Response> {
         let component_interaction = ComponentInteraction::try_from(self)?;
 
         let bot = Bot::get_global();
@@ -114,8 +121,11 @@ impl Interaction {
             return Err(Error::ComponentNotFound(format!("{}", component_interaction.data.custom_id)))
         };
 
-        let discord_service = DiscordService::get_or_init(component_interaction.token.clone());
-        let ctx = ComponentContext::new(bot.clone(), env, discord_service);
+        let discord_service = DiscordService::get_or_init(token.into());
+        //let discord_service = DiscordService::new(component_interaction.token.clone());
+
+        let bot_state = BotState::new(bot.clone());
+        let ctx = ComponentContext::new(bot_state, env, discord_service);
 
         match ComponentDispatcher::dispatch(component, component_interaction, ctx).await {
             Err(e) => Ok(e.as_response()?),

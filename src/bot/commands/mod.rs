@@ -1,15 +1,15 @@
 use twilight_model::guild::Permissions;
 
-use crate::{dev::{sync::SyncCommand, version::VersionCommand}, models::command::{Command, IntoSubcommand, SubcommandType}};
+use crate::{bot::commands::{sync::SyncCommand, version::VersionCommand}, models::command::{Command, IntoSubcommand, SubcommandType}};
 
 pub mod sync;
 pub mod version;
 
-pub struct DevCommands;
+pub struct DefaultBotCommands;
 
-impl Command for DevCommands {
+impl Command for DefaultBotCommands {
     fn name(&self) -> String {
-        "dev".into()
+        "bot".into()
     }
 
     fn default_member_permissions(&self) -> Option<Permissions> {
@@ -17,7 +17,7 @@ impl Command for DevCommands {
     }
 
     fn description(&self) -> String {
-        "Useful set of commands that can be used to manage the bot while in development mode".into()
+        "Useful set of commands that can be used to manage the bot".into()
     }
 
     fn subcommands(&self) -> Vec<SubcommandType> {

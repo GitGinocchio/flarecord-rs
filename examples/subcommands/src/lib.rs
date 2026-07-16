@@ -8,7 +8,7 @@ mod commands;
 
 static BOT: LazyLock<Arc<Bot>> = LazyLock::new(|| {
     BotBuilder::new()
-        .enable_dev_commands()
+        .enable_bot_commands()
         .build()
 });
 

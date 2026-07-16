@@ -7,10 +7,16 @@ pub struct Thumbnail(TwilightThumbnail);
 impl Thumbnail {
     /// Supports arbitrary urls and `attachment://<filename>` references.
     pub fn new(url: impl Into<String>) -> Self {
+        let url = url.into();
+
+        if url.is_empty() {
+            panic!("Thumbnail url is a required field!")
+        }
+
         Self(TwilightThumbnail {
             id: None,
             media: UnfurledMediaItem {
-                url: url.into(),
+                url: url,
                 proxy_url: None,
                 height: None,
                 width: None,

@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 
 use reqwest::{Client};
 use twilight_model::application::interaction::Interaction as TwilightInteraction;
-use worker::{Env, Request, Response};
+use worker::{Env, Method, Request, Response};
 
 use crate::bot::builder::BotBuilder;
 use crate::crypto;
@@ -14,6 +14,7 @@ use crate::models::modals::ModalType;
 use crate::error::Error;
 use crate::utils::{has_api_access, is_interaction};
 
+pub (crate) mod commands;
 pub mod builder;
 pub mod state;
 
@@ -39,17 +40,13 @@ impl Bot {
         BOT.get().expect("Bot not initiliazed").clone()
     }
 
-    pub fn new(devcommands: bool) -> Arc<Bot> {
+    pub fn new() -> Arc<Bot> {
         let mut builder = BotBuilder::new();
-
-        if devcommands {
-            builder = builder.enable_dev_commands();
-        }
-
+        builder = builder.enable_bot_commands();
         builder.build()
     }
 
-    pub async fn handle_commands(&self, mut req: Request, env: Env) -> worker::Result<Response> {
+    pub async fn handle_interaction(&self, mut req: Request, env: Env) -> worker::Result<Response> {
         let body = req.bytes().await?;
         let headers = req.headers();
 
@@ -80,6 +77,7 @@ impl Bot {
 
     pub async fn handle_api(&self, req: Request, env: Env) -> worker::Result<Response> {
         let headers = req.headers();
+        let method = req.method();
         let token = env.secret("DISCORD_BOT_TOKEN")
             .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
             .to_string();
@@ -91,10 +89,10 @@ impl Bot {
         let endpoint = req.path();
         let segments: Vec<&str> = endpoint.split('/').filter(|s| !s.is_empty()).collect();
 
-        match segments.as_slice() {
-            [.., "sync"] => crate::api::sync::sync(env, token).await,
-            [.., "health"] => crate::api::health::health(env, token).await,
-            [.., "version"] => crate::api::version::version(env).await,
+        match (segments.as_slice(), method) {
+            ([.., "sync"], Method::Post) => crate::api::sync::sync(env, token).await,
+            ([.., "health"], Method::Get) => crate::api::health::health(env, token).await,
+            ([.., "version"], Method::Get) => crate::api::version::version(env).await,
             _ => Response::error("Not found", 404)
         }
     }
@@ -103,7 +101,7 @@ impl Bot {
         let headers = req.headers();
        
         if is_interaction(headers) {
-            return self.handle_commands(req, env).await
+            return self.handle_interaction(req, env).await
         }
 
         self.handle_api(req, env).await

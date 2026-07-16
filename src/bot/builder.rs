@@ -1,7 +1,7 @@
 use std::{any::Any, collections::HashMap, sync::Arc};
 
 use crate::{
-    CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
+    CommandRegistration, bot::{Bot, commands::DefaultBotCommands}, error::BotResult, models::{
         command::{
             Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
         }, components::{Component, ComponentType, id::get_component_id_from_type_id}, modals::{IntoModal, Modal, ModalType}
@@ -23,8 +23,8 @@ impl BotBuilder {
         }
     }
 
-    pub fn enable_dev_commands(self) -> Self {
-        self.register_command(DevCommands)
+    pub fn enable_bot_commands(self) -> Self {
+        self.register_command(DefaultBotCommands)
     }
 
     pub fn register_component<T: Component + 'static>(mut self, component: T) -> Self {
