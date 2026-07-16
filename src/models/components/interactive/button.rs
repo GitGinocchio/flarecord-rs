@@ -12,7 +12,7 @@ use twilight_model::{
     }
 };
 
-use crate::{error::BotResult, models::{command::response::CommandResponse, components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
+use crate::{error::BotResult, models::{components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
 
 
 pub enum ButtonStyle {
@@ -113,7 +113,7 @@ impl ButtonKind<Empty> {
 
 impl ButtonKind<Normal> {
     /// If is not specified an `on_click` method the interaction is sent to the base Component
-    pub fn on_click<F, Fut>(mut self, handler: F) -> Self 
+    pub fn on_click<F, Fut>(mut self, handler: F) -> Self
     where 
         F: Fn(ComponentInteraction, ComponentContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = BotResult<()>> + 'static,

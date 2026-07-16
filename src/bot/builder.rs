@@ -1,10 +1,10 @@
-use std::{any::{Any, TypeId, type_name}, collections::HashMap, sync::Arc};
+use std::{any::Any, collections::HashMap, sync::Arc};
 
 use crate::{
     CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
             Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
-        }, components::{Component, ComponentType, id::{get_component_id, get_component_id_from_type_id}}, modals::{IntoModal, Modal, ModalType}
+        }, components::{Component, ComponentType, id::get_component_id_from_type_id}, modals::{IntoModal, Modal, ModalType}
     }, traits::component::IntoComponent
 };
 

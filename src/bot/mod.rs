@@ -1,4 +1,3 @@
-use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, OnceLock};
 
@@ -92,6 +91,7 @@ impl Bot {
 
         match segments.as_slice() {
             [.., "sync"] => crate::api::sync::sync(env, token).await,
+            [.., "health"] => crate::api::health::health(env, token).await,
             _ => Response::error("Not found", 404)
         }
     }

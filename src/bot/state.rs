@@ -11,7 +11,4 @@ impl BotState {
     pub fn new(bot: Arc<Bot>) -> Self {
         Self { bot }
     }
-
-    pub fn fetch_bot_user(&self) {
-    }
 }

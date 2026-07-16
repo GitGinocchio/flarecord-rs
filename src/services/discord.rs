@@ -110,6 +110,7 @@ impl DiscordService {
         Ok(())
     }
 
+    #[allow(unused)]
     pub (crate) async fn update(&self, interaction_id: Id<InteractionMarker>, interaction_token: &str, response: CommandResponse) -> BotResult<()> {
         let url = format!("{BASE_URL}/interactions/{interaction_id}/{interaction_token}/callback");
         let update_payload = response.as_update();
@@ -129,6 +130,18 @@ impl DiscordService {
         }
 
         Ok(())
+    }
+
+    pub async fn fetch_bot_user(&self) -> BotResult<User> {
+        let endpoint = format!("{}/users/@me", BASE_URL);
+
+        let bot_user: TwilightUser = self.request(Method::GET, endpoint)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(User::from(bot_user))
     }
 
     pub async fn fetch_user(&self, user_id: &Id<UserMarker>) -> BotResult<User> {
