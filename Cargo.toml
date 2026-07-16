@@ -3,12 +3,6 @@ name = "flarecord"
 version = "0.1.0"
 edition = "2024"
 
-[profile.release]
-opt-level = 'z'     # Ottimizza per la dimensione invece che per la velocità
-lto = true          # Link Time Optimization per rimuovere codice morto
-codegen-units = 1   # Migliora le ottimizzazioni ma rallenta la compilazione
-panic = 'abort'     # Riduce la dimensione rimuovendo lo stack unwinding
-
 [workspace]
 members = [
     "examples/with_commands",
