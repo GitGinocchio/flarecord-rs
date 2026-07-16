@@ -30,7 +30,9 @@ pub struct Bot {
 impl Bot {
     pub (crate) fn set_global(self) {
         let bot = Arc::new(self);
-        BOT.set(bot).ok().expect("Bot already initialized")
+        if let Err(_) = BOT.set(bot) {
+            worker::console_warn!("Bot already initialized");
+        }
     }
 
     pub (crate) fn get_global() -> Arc<Bot> {
