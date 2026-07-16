@@ -37,7 +37,6 @@ impl Command for Hello {
             .build();
         
         Ok(CommandResponse::builder()
-            .component(action_row)
             .component(MyComponent)
             .content(message)
             .ephemeral()

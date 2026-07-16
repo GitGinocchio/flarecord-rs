@@ -12,21 +12,14 @@ use flarecord::{
             section::Section, 
             separator::Separator
         }
-    }}, 
-    prelude::*
+    }, embed::Embed}, prelude::*
 };
 
 
 pub struct MyComponent;
 
 impl Component for MyComponent {
-    fn id(&self) -> String {
-        "mycomponent".into()
-    }
-
-    fn build(&self) -> RootComponent {
-        let mut root = RootComponent::new();
-
+    fn build(&self, root: &mut RootComponent) {
         let text_display = TextDisplay::new()
             .heading(1, "Ciaooo")
             .paragraph("This is some")
@@ -35,30 +28,62 @@ impl Component for MyComponent {
         let button = Button::new()
             .style(ButtonStyle::Primary)
             .label("Test")
+            .on_click(async |_int, _ctx| {
+                worker::console_debug!("Button clicked!");
+                Ok(())
+            })
             .build();
 
-        let text_display2 = TextDisplay::new()
-            .heading(1, "Ciaooo")
-            .paragraph("This is some")
-            .bold("text");
+        let select = Select::user()
+            .max_values(1)
+            .min_values(1)
+            .required(true)
+            .on_select(async |int, _ctx| {
+                int.defer(true).await?;
 
-        let thumbnail = Thumbnail::new("https://google.com")
-            .description("Un link a google...");
+                let text_display = TextDisplay::new()
+                    .heading(1, "Ciaooo")
+                    .paragraph(format!("Ciaooo {:?}", int.data.values))
+                    .bold("text");
+
+                let thumbnail = Thumbnail::new("https://repository-images.githubusercontent.com/1193730554/424d69b9-90e1-4ec3-9c8e-f2671339459a")
+                    .description("Un link a google...");
+
+                let button = Button::new()
+                    .url("https://github.com/GitGinocchio/Appunti")
+                    .label("Github Link")
+                    .build();
+
+                let section = Section::new()
+                    .accessory(thumbnail)
+                    .component(text_display)
+                    .build();
+
+                let action_row = ActionRow::new()
+                    .button(button)
+                    .build();
+
+                let response = CommandResponse::builder()
+                    .component(section)
+                    .component(action_row)
+                    .build();
+
+                int.edit(response).await?;
+                Ok(())
+            })
+            .build();
         
         let section = Section::new()
             .component(text_display)
             .accessory(button)
             .build();
 
-        let section2 = Section::new()
-            .component(text_display2)
-            .accessory(thumbnail)
+        let action_row = ActionRow::new()
+            .select(select)
             .build();
         
         root.add(section);
-        root.add(section2);
-
-        root
+        root.add(action_row);
     }
 
     async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {

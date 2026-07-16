@@ -1,6 +1,6 @@
 use twilight_model::channel::message::component::TextDisplay as TwilightTextDisplay;
 
-use crate::traits::component::IntoTwilight;
+use crate::{models::components::layout::LayoutComponent, traits::component::{IntoComponent, IntoTwilight}};
 
 pub struct TextDisplay(TwilightTextDisplay);
 

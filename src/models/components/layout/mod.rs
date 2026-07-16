@@ -1,6 +1,6 @@
 use twilight_model::channel::message::Component as TwilightComponent;
 
-use crate::{models::components::{ComponentType, layout::{action_row::ActionRow, container::Container, section::Section, separator::Separator}}, traits::component::{IntoComponent, IntoTwilight}};
+use crate::{models::components::{ComponentType, id::{HierarchicalId, IdAssignable, assign_ids}, layout::{action_row::ActionRow, container::Container, section::Section, separator::Separator}}, traits::component::{IntoComponent, IntoTwilight}};
 
 
 pub mod action_row;
@@ -8,15 +8,25 @@ pub mod container;
 pub mod separator;
 pub mod section;
 
-pub struct RootComponent(pub (crate) Vec<LayoutComponent>);
+pub struct RootComponent {
+    pub (crate) component_id: Option<String>,
+    pub (crate) children: Vec<LayoutComponent>
+}
 
 impl RootComponent {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self {
+            component_id: None,
+            children: Vec::new()
+        }
+    }
+
+    pub (crate) fn set_component_id(&mut self, component_id: String) {
+        self.component_id = Some(component_id);
     }
 
     pub (crate) fn require_components_v2(&self) -> bool {
-        for comp in self.0.iter() {
+        for comp in self.children.iter() {
             if comp.require_components_v2() {
                 return true
             }
@@ -26,12 +36,31 @@ impl RootComponent {
     }
 
     pub (crate) fn count(&self) -> usize {
-        todo!()
+        let mut count: usize = 0;
+
+        for component in &self.children {
+            count += component.count();
+        }
+
+        count
+    }
+
+    pub (crate) fn assign_ids(&mut self) {
+        let mut id = HierarchicalId::new();
+        
+        if let Some(component_id) = &self.component_id {
+            id.set_prefix(component_id.clone())
+        }
+
+        for child in self.children.iter_mut() {
+            assign_ids(child, &mut id);
+            id.next_root();
+        }
     }
 
     pub fn add<C: Into<LayoutComponent>>(&mut self, component: C) {
         let component = component.into();
-        self.0.push(component);
+        self.children.push(component);
     }
 }
 
@@ -43,12 +72,12 @@ pub enum LayoutComponent {
 }
 
 impl LayoutComponent {
-    pub (crate) fn require_components_v2(&self) -> bool {
+    pub (crate) fn count(&self) -> usize {
         match self {
-            Self::ActionRow(_) => false,
-            Self::Container(_) => true,
-            Self::Section(_) => true,
-            Self::Separator(_) => true,
+            Self::ActionRow(action_row) => action_row.count(),
+            Self::Container(container) => container.count(),
+            Self::Section(section) => section.count(),
+            Self::Separator(_separator) => 1
         }
     }
 
@@ -58,6 +87,35 @@ impl LayoutComponent {
             Self::Container(container) => container.get_id(),
             Self::Section(section) => section.get_id(),
             Self::Separator(_) => 0
+        }
+    }
+
+    pub (crate) fn require_components_v2(&self) -> bool {
+        match self {
+            Self::ActionRow(_) => false,
+            Self::Container(_) => true,
+            Self::Section(_) => true,
+            Self::Separator(_) => true,
+        }
+    }
+}
+
+impl IdAssignable for LayoutComponent {
+    fn set_id(&mut self, id: &HierarchicalId) {
+        match self {
+            Self::ActionRow(action_row) => action_row.set_id(id),
+            Self::Container(container) => container.set_id(id),
+            Self::Section(section) => section.set_id(id),
+            Self::Separator(_separator) => {}
+        }
+    }
+
+    fn children(&mut self) -> Box<dyn Iterator<Item = &mut dyn IdAssignable> + '_> {
+        match self {
+            Self::ActionRow(action_row) => action_row.children(),
+            Self::Container(container) => container.children(),
+            Self::Section(section) => section.children(),
+            Self::Separator(_separator) => Box::new(std::iter::empty::<&mut dyn IdAssignable>())
         }
     }
 }
@@ -123,8 +181,32 @@ impl IntoTwilight<TwilightComponent> for LayoutComponent {
 
 impl IntoTwilight<Vec<TwilightComponent>> for RootComponent {
     fn into_twilight(self) -> Vec<TwilightComponent> {
-        self.0.into_iter()
-            .map(|c| c.into_twilight())
-            .collect()
+        let max_count = if self.require_components_v2() {
+            twilight_validate::component::COMPONENT_COUNT
+        } else {
+            twilight_validate::component::COMPONENT_V2_COUNT
+        };
+
+        let components_count = self.count();
+
+        if components_count > max_count {
+            panic!("Maximum total number of components reached ({}/{}", components_count, max_count)
+        }
+
+        let mut id = HierarchicalId::new();
+        
+        if let Some(component_id) = self.component_id {
+            id.set_prefix(component_id)
+        }
+
+        let mut twilight_components = Vec::new();
+
+        for mut c in self.children.into_iter() {
+            assign_ids(&mut c as &mut dyn IdAssignable, &mut id);
+            twilight_components.push(c.into_twilight());
+            id.next_root();
+        }
+
+        twilight_components
     }
 }

@@ -1,5 +1,6 @@
 use std::num::ParseIntError;
 
+#[derive(Clone)]
 pub struct Color(u32);
 
 impl Color {

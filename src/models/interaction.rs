@@ -105,7 +105,12 @@ impl Interaction {
         let component_interaction = ComponentInteraction::try_from(self)?;
 
         let bot = Bot::get_global();
-        let Some(component) = bot.components.get(&component_interaction.data.custom_id) else {
+
+        let Some((root_component_id, _)) = component_interaction.data.custom_id.split_once(":") else {
+            return Err(Error::ComponentNotFound(format!("Component id malformed: {}", component_interaction.data.custom_id)))
+        };
+
+        let Some(component) = bot.components.get(root_component_id) else {
             return Err(Error::ComponentNotFound(format!("{}", component_interaction.data.custom_id)))
         };
 

@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{any::{Any, TypeId, type_name}, collections::HashMap, sync::Arc};
 
 use crate::{
     CommandRegistration, bot::Bot, dev::DevCommands, error::BotResult, models::{
         command::{
             Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
-        }, components::{Component, ComponentType}, modals::{IntoModal, Modal, ModalType}
+        }, components::{Component, ComponentType, id::{get_component_id, get_component_id_from_type_id}}, modals::{IntoModal, Modal, ModalType}
     }, traits::component::IntoComponent
 };
 
@@ -27,8 +27,10 @@ impl BotBuilder {
         self.register_command(DevCommands)
     }
 
-    pub fn register_component(mut self, component: impl Component + 'static) -> Self {
-        self.components.insert(component.id(), component.into_component());
+    pub fn register_component<T: Component + 'static>(mut self, component: T) -> Self {
+        let component = component.into_component();
+        let component_id = get_component_id_from_type_id(component.type_id());
+        self.components.insert(component_id, component);
         self
     }
 

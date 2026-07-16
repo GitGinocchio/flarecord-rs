@@ -31,6 +31,7 @@ pub type SubcommandGroupType = Arc<DynSubcommandGroup<'static>>;
 
 pub type CommandOptions = Option<Vec<CommandOption>>;
 
+#[allow(async_fn_in_trait)]
 #[dynosaur(DynCommand = dyn(box) Command)]
 pub trait Command: Send + Sync {
     fn name(&self) -> String;
@@ -52,26 +53,26 @@ pub trait Command: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    fn autocomplete(
+    async fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
         _ctx: AutocompleteContext
-    ) -> impl std::future::Future<Output = BotResult<AutocompleteResponse>> + Send {async {
+    ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
-    } }
+    }
 
-    fn execute(
+    async fn execute(
         &self, 
         _interaction: CommandInteraction, 
         _ctx: CommandContext
-    ) -> impl std::future::Future<Output = BotResult<CommandResponse>> + Send {async {
+    ) -> BotResult<CommandResponse> {
         Err(Error::ExecuteNotImplemented(self.name()))
-    } }
+    }
 }
 
-
+#[allow(async_fn_in_trait)]
 #[dynosaur(DynSubcommand = dyn(box) Subcommand)]
-pub trait Subcommand: Send + Sync {
+pub trait Subcommand: Sync {
     fn name(&self) -> String;
     fn name_localizations(&self) -> Option<HashMap<String, String>> { None }
     
@@ -82,25 +83,25 @@ pub trait Subcommand: Send + Sync {
 
     fn options(&self) -> BotResult<CommandOptions> { Ok(None) }
 
-    fn autocomplete(
+    async fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
         _ctx: AutocompleteContext
-    ) -> impl std::future::Future<Output = BotResult<AutocompleteResponse>> + Send {async {
+    ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
-    } }
+    }
 
-    fn execute(
+    async fn execute(
         &self, 
         _interaction: CommandInteraction, 
         _ctx: CommandContext
-    ) -> impl std::future::Future<Output = BotResult<CommandResponse>> + Send {async {
+    ) -> BotResult<CommandResponse> {
         Err(Error::ExecuteNotImplemented(self.name()))
-    } }
+    }
 }
 
 #[dynosaur(DynSubcommandGroup = dyn(box) SubcommandGroup)]
-pub trait SubcommandGroup: Send + Sync {
+pub trait SubcommandGroup: Sync {
     fn name(&self) -> String;
     fn name_localizations(&self) -> Option<HashMap<String, String>> { None }
     

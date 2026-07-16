@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use twilight_model::{
     channel::message::{
         Embed as TwilightEmbed,
@@ -14,7 +16,7 @@ use twilight_model::{
 
 use crate::{
     models::{
-        attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::Component, embed::Embed
+        attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::{Component, id::{get_component_id, get_component_id_from_type_id}, layout::RootComponent}, embed::Embed
     }, traits::component::{
         IntoComponent, 
         IntoTwilight
@@ -35,7 +37,8 @@ pub (crate) struct CommandResponseUpdate {
     pub components: Option<Vec<TwilightComponent>>,
 }
 
-pub struct CommandResponse(TwilightCommandResponse);
+#[derive(Debug)]
+pub struct CommandResponse(pub (crate) TwilightCommandResponse);
 
 impl CommandResponse {
     pub fn new() -> Self {
@@ -88,7 +91,13 @@ impl CommandResponse {
     /// - **Custom Components**: Any type implementing the [`Component`] trait.
     pub fn add_component(&mut self, component: impl IntoComponent) {
         let component = component.into_component();
-        let root = component.build();
+
+        let component_id = get_component_id_from_type_id(component.type_id());
+        let mut root = RootComponent::new();
+        component.build(&mut root);
+
+        root.set_component_id(component_id);
+        root.assign_ids();
 
         if root.require_components_v2() {
             self.0.data.get_or_insert_default()

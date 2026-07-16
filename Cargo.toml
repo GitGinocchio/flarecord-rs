@@ -3,6 +3,12 @@ name = "flarecord"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = 'z'     # Ottimizza per la dimensione invece che per la velocità
+lto = true          # Link Time Optimization per rimuovere codice morto
+codegen-units = 1   # Migliora le ottimizzazioni ma rallenta la compilazione
+panic = 'abort'     # Riduce la dimensione rimuovendo lo stack unwinding
+
 [workspace]
 members = [
     "examples/with_commands",
@@ -36,9 +42,4 @@ thiserror = "^2.0"
 hex = "^0.4"
 
 ed25519-dalek = "^3.0"
-rand = "0.10"
 dynosaur = "0.3"
-
-[dependencies.getrandom]
-version = "0.4"
-features = ["wasm_js"]

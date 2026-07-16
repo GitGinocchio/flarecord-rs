@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Deref, pin::Pin};
 
 use twilight_model::{
     channel::{
@@ -22,7 +22,7 @@ use twilight_model::{
     }
 };
 
-use crate::{models::components::{context::ComponentContext, id::ID_GEN, interaction::ComponentInteraction}, traits::component::IntoTwilight};
+use crate::{error::BotResult, models::{command::response::CommandResponse, components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
 
 pub enum Select {
     String(SelectKind<String>),
@@ -33,14 +33,24 @@ pub enum Select {
 }
 
 impl Select {
-    pub (crate) fn get_id(&self) -> String {
+    pub (crate) async fn selected(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> BotResult<()> {
         match self {
-            Select::Channel(select) => select.get_id(),
-            Select::String(select) => select.get_id(),
-            Select::User(select) => select.get_id(),
-            Select::Role(select) => select.get_id(),
-            Select::Mentionable(select) => select.get_id()
+            Self::String(select) => select.selected(interaction, ctx).await,
+            Self::Channel(select) => select.selected(interaction, ctx).await,
+            Self::User(select) => select.selected(interaction, ctx).await,
+            Self::Role(select) => select.selected(interaction, ctx).await,
+            Self::Mentionable(select) => select.selected(interaction, ctx).await
         }
+    }
+
+    pub (crate) fn get_custom_id(&self) -> &str {
+        match self {
+            Self::String(select) => select.inner.custom_id.as_str(),
+            Self::Channel(select) => select.inner.custom_id.as_str(),
+            Self::User(select) => select.inner.custom_id.as_str(),
+            Self::Role(select) => select.inner.custom_id.as_str(),
+            Self::Mentionable(select) => select.inner.custom_id.as_str()
+        } 
     }
 
     pub fn string() -> SelectKind<String> {
@@ -68,7 +78,7 @@ impl Select {
             inner: TwilightSelectMenu {
                 id: None,
                 channel_types: None,
-                custom_id: ID_GEN.next(),
+                custom_id: String::new(),
                 default_values: None,
                 disabled: false,
                 kind: kind,
@@ -86,7 +96,7 @@ impl Select {
 
 pub struct SelectKind<T> {
     pub(crate) inner: TwilightSelectMenu,
-    pub(crate) handler: Option<Box<dyn Fn(ComponentInteraction, ComponentContext) + Send + Sync>>,
+    pub(crate) handler: Option<Box<dyn InteractiveComponentHandler>>,
     _marker: PhantomData<T>,
 }
 
@@ -98,11 +108,21 @@ impl SelectKind<Id<ChannelMarker>> {
 }
 
 impl<T> SelectKind<T> {
-    pub fn on_select<F>(mut self, handler: F) -> Self 
-    where F: Fn(ComponentInteraction, ComponentContext) + Send + Sync + 'static 
+    pub fn on_select<F, Fut>(mut self, handler: F) -> Self 
+    where 
+        F: Fn(ComponentInteraction, ComponentContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = BotResult<()>> + 'static,
     {
-        self.handler = Some(Box::new(handler));
+        self.handler = Some(Box::new(Handler(handler)));
         self
+    }
+
+    pub (crate) async fn selected(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> BotResult<()> {
+        if let Some(handler) = &self.handler {
+            return handler.handle(interaction, ctx).await;
+        } else {
+            Ok(())
+        }
     }
 
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
@@ -128,10 +148,6 @@ impl<T> SelectKind<T> {
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.inner.disabled = disabled;
         self
-    }
-
-    pub (crate) fn get_id(&self) -> String {
-        self.inner.custom_id.clone()
     }
 }
 
@@ -183,6 +199,18 @@ impl_into_select!(
     (Id<GenericMarker>, Mentionable),
     (Id<ChannelMarker>, Channel),
 );
+
+impl IdAssignable for Select {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
+        match self {
+            Self::Mentionable(s) => s.inner.custom_id = id.as_string(),
+            Self::Role(s) => s.inner.custom_id = id.as_string(),
+            Self::User(s) => s.inner.custom_id = id.as_string(),
+            Self::Channel(s) => s.inner.custom_id = id.as_string(),
+            Self::String(s) => s.inner.custom_id = id.as_string(),
+        }
+    }
+}
 
 impl<T> IntoTwilight<TwilightSelectMenu> for SelectKind<T> {
     fn into_twilight(self) -> TwilightSelectMenu {

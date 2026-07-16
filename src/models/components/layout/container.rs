@@ -3,7 +3,7 @@ use twilight_model::channel::message::{
     component::Container as TwilightContainer
 };
 
-use crate::{models::{color::Color, components::{content::media_gallery::MediaGallery, id::ID_GEN, layout::{action_row::ActionRow, section::Section, separator::Separator}}}, traits::component::IntoTwilight};
+use crate::{models::{color::Color, components::{content::media_gallery::MediaGallery, id::IdAssignable, layout::{action_row::ActionRow, section::Section, separator::Separator}}}, traits::component::IntoTwilight};
 
 pub enum ContainerChild {
     ActionRow(ActionRow),
@@ -12,14 +12,14 @@ pub enum ContainerChild {
     MediaGallery(MediaGallery)
 }
 
-impl ContainerChild {
-    pub (crate) fn get_id(&mut self) -> i32 {
-        match self {
-            Self::ActionRow(action_row) => action_row.get_id(),
-            Self::Section(section) => section.get_id(),
-            Self::Separator(_) => 0,
-            Self::MediaGallery(_) => 0
-        }
+impl IdAssignable for ContainerChild {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
+       match self {
+        Self::ActionRow(action_row) => action_row.set_id(id),
+        Self::Section(section) => section.set_id(id),
+        Self::Separator(_separator) => {},
+        Self::MediaGallery(_media_gallery) => {}
+       } 
     }
 }
 
@@ -48,7 +48,7 @@ impl From<MediaGallery> for ContainerChild {
 }
 
 pub struct Container {
-    children: Vec<ContainerChild>,
+    pub (crate) children: Vec<ContainerChild>,
     accent_color: Option<Color>,
     spoiler: Option<bool>,
     id: i32
@@ -60,8 +60,16 @@ impl Container {
             children: Vec::new(),
             accent_color: None,
             spoiler: None,
-            id: ID_GEN.next_i32()
+            id: 0
         }
+    }
+
+    pub (crate) fn count(&self) -> usize {
+        self.children.len()
+    }
+
+    pub (crate) fn get_id(&self) -> i32 {
+        self.id
     }
 
     pub fn accent_color(mut self, color: Color) -> Self {
@@ -74,9 +82,15 @@ impl Container {
         self.children.push(child);
         self
     }
+}
 
-    pub (crate) fn get_id(&self) -> i32 {
-        self.id
+impl IdAssignable for Container {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
+        self.id = id.as_usize() as i32;
+    }
+
+    fn children(&mut self) -> Box<dyn Iterator<Item = &mut dyn IdAssignable> + '_> {
+        Box::new(self.children.iter_mut().map(|c| c as &mut dyn IdAssignable))
     }
 }
 

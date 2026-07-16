@@ -1,6 +1,14 @@
-use twilight_model::{application::{interaction::{InteractionContextType, InteractionData, InteractionPartialGuild}, monetization::Entitlement}, channel::Channel, guild::{PartialMember, Permissions}, id::{AnonymizableId, Id, marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker, UserMarker}}, oauth::ApplicationIntegrationMap};
+use twilight_model::{application::{interaction::{InteractionContextType, InteractionData, InteractionPartialGuild}, monetization::Entitlement}, channel::{Channel, Message, message::MessageFlags}, guild::{PartialMember, Permissions}, id::{AnonymizableId, Id, marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker, UserMarker}}, oauth::ApplicationIntegrationMap};
 
-use crate::{error::Error, models::{components::data::ComponentData, interaction::Interaction, user::{User, UserRef}}};
+use crate::{
+    error::{BotResult, Error}, models::{
+        command::response::CommandResponse, 
+        components::data::ComponentData, 
+        interaction::Interaction, 
+        user::{User, UserRef}
+    }, 
+    services::discord::DISCORD_SERVICE
+};
 
 #[allow(unused)]
 pub struct ComponentInteraction {
@@ -15,7 +23,8 @@ pub struct ComponentInteraction {
     pub guild: Option<InteractionPartialGuild>,
     pub guild_id: Option<Id<GuildMarker>>,
     pub guild_locale: Option<String>,
-    
+
+    pub message: Option<Message>,
     pub member: Option<PartialMember>,
     pub user: Option<User>,
     
@@ -38,6 +47,32 @@ impl ComponentInteraction {
 
     pub fn author_id(&self) -> Option<Id<UserMarker>> {
         self.author().map(|a| a.id)
+    }
+
+    pub async fn defer(&self, ephemeral: bool) -> BotResult<()> {
+        let service = DISCORD_SERVICE.get().expect("DiscordService should be Some");
+
+        let is_edit = if self.message.is_some() { true } else { false };
+
+        service.defer(self.id, &self.token, is_edit, ephemeral).await?;
+
+        Ok(())
+    }
+
+    pub async fn edit(&self, mut response: CommandResponse) -> BotResult<CommandResponse> {
+        let service = DISCORD_SERVICE.get().expect("DiscordService should be Some");
+
+        if let Some(message) = &self.message && let Some(flags) = message.flags && flags.contains(MessageFlags::IS_COMPONENTS_V2) {
+            response.0.data
+                .get_or_insert_default()
+                .flags
+                .get_or_insert(MessageFlags::empty())
+                .insert(MessageFlags::IS_COMPONENTS_V2);
+        };
+
+        service.edit(self.application_id, &self.token, response).await?;
+
+        Ok(CommandResponse::new())
     }
 }
 
@@ -65,6 +100,7 @@ impl TryFrom<Interaction> for ComponentInteraction {
             #[allow(deprecated)]
             channel_id: value.channel_id,
             guild_id: value.guild_id,
+            message: value.message.take(),
             member: value.member.take(),
             user: value.user.take().map(|u| u.into()),
             app_permissions: value.app_permissions

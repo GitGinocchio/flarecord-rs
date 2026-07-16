@@ -7,7 +7,7 @@ use twilight_model::{
     }
 };
 
-use crate::{models::components::{id::ID_GEN, interactive::{button::Button, select::Select}}, traits::component::IntoTwilight};
+use crate::{models::components::{id::IdAssignable, interactive::{button::Button, select::Select}}, traits::component::IntoTwilight};
 
 pub struct Empty;
 pub struct Has1;
@@ -32,11 +32,11 @@ pub enum ActionRowChild {
     Select(Select)
 }
 
-impl ActionRowChild {
-    pub (crate) fn get_id(&self) -> String {
+impl IdAssignable for ActionRowChild {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
         match self {
-            Self::Button(btn) => btn.get_id(),
-            Self::Select(select) => select.get_id()
+            Self::Button(b) => b.set_id(id),
+            Self::Select(s) => s.set_id(id)
         }
     }
 }
@@ -47,11 +47,35 @@ impl ActionRow {
         ActionRowState { 
             components: Vec::new(), 
             _marker: PhantomData,
-            id: ID_GEN.next_i32()
+            id: 0
         }
     }
 
-    pub (crate) fn get_children(&self) -> &Vec<ActionRowChild> {
+    pub (crate) fn count(&self) -> usize {
+        match self {
+            Self::Empty(_) => 0,
+            Self::Has1(_) => 1,
+            Self::Has2(_) => 2,
+            Self::Has3(_) => 3,
+            Self::Has4(_) => 3,
+            Self::Has5(_) => 4,
+            Self::HasSelect(_) => 1
+        }
+    }
+
+    pub (crate) fn get_id(&self) -> i32 {
+        match self {
+            ActionRow::Empty(a) => a.id,
+            ActionRow::Has1(a) => a.id,
+            ActionRow::Has2(a) => a.id,
+            ActionRow::Has3(a) => a.id,
+            ActionRow::Has4(a) => a.id,
+            ActionRow::Has5(a) => a.id,
+            ActionRow::HasSelect(a) => a.id
+        }
+    }
+
+    pub (crate) fn get_children(&self) -> &[ActionRowChild] {
         match self {
             ActionRow::Empty(a) => &a.components,
             ActionRow::Has1(a) => &a.components,
@@ -60,18 +84,6 @@ impl ActionRow {
             ActionRow::Has4(a) => &a.components,
             ActionRow::Has5(a) => &a.components,
             ActionRow::HasSelect(a) => &a.components
-        }
-    }
-
-    pub (crate) fn get_id(&self) -> i32 {
-        match self {
-            ActionRow::Empty(empty) => empty.get_id(),
-            ActionRow::Has1(empty) => empty.get_id(),
-            ActionRow::Has2(empty) => empty.get_id(),
-            ActionRow::Has3(empty) => empty.get_id(),
-            ActionRow::Has4(empty) => empty.get_id(),
-            ActionRow::Has5(empty) => empty.get_id(),
-            ActionRow::HasSelect(empty) => empty.get_id(),
         }
     }
 }
@@ -129,12 +141,6 @@ pub trait IntoActionRow {
 macro_rules! impl_action_row {
     ($(($state:ident, $variant:ident)),* $(,)?) => {
         $(
-            impl ActionRowState<$state> {
-                pub (crate) fn get_id(&self) -> i32 {
-                    self.id
-                }
-            }
-
             impl IntoActionRow for ActionRowState<$state> {
                 fn build(self) -> ActionRow {
                     ActionRow::$variant(self)
@@ -159,6 +165,32 @@ impl_action_row!(
     (Has5, Has5),
     (HasSelect, HasSelect),
 );
+
+impl IdAssignable for ActionRow {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
+        match self {
+            Self::Empty(s) => s.id = id.as_usize() as i32,
+            Self::Has1(s) => s.id = id.as_usize() as i32,
+            Self::Has2(s) => s.id = id.as_usize() as i32,
+            Self::Has3(s) => s.id = id.as_usize() as i32,
+            Self::Has4(s) => s.id = id.as_usize() as i32,
+            Self::Has5(s) => s.id = id.as_usize() as i32,
+            Self::HasSelect(s) => s.id = id.as_usize() as i32,
+        }
+    }
+
+    fn children(&mut self) -> Box<dyn Iterator<Item = &mut dyn IdAssignable> + '_> {
+        match self {
+            Self::Empty(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::Has1(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::Has2(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::Has3(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::Has4(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::Has5(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+            Self::HasSelect(s) => Box::new(s.components.iter_mut().map(|c| c as &mut dyn IdAssignable)),
+        }
+    }
+}
 
 impl IntoTwilight<TwilightComponent> for ActionRowChild {
     fn into_twilight(self) -> TwilightComponent {

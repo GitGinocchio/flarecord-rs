@@ -90,9 +90,30 @@ impl DiscordService {
     }
 
     pub (crate) async fn edit(&self, application_id: Id<ApplicationMarker>, token: &str, response: CommandResponse) -> BotResult<()> {
-        let url = format!("{}/webhooks/{}/{}/messages/@original", BASE_URL, application_id, token);
+        let url = format!("{}/webhooks/{}/{}/messages/@original?with_components=true", BASE_URL, application_id, token);
         let update_payload = response.as_update();
 
+        worker::console_debug!("response_edit_payload: {update_payload:#?}");
+
+        let response = self.request(Method::PATCH, url)
+            .json(&update_payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            worker::console_error!("API Error [{}]: {}", status, body);
+            return Err(Error::Generic(format!("API returned {}: {}", status, body)));
+        }
+
+        Ok(())
+    }
+
+    pub (crate) async fn update(&self, interaction_id: Id<InteractionMarker>, interaction_token: &str, response: CommandResponse) -> BotResult<()> {
+        let url = format!("{BASE_URL}/interactions/{interaction_id}/{interaction_token}/callback");
+        let update_payload = response.as_update();
+        
         worker::console_debug!("response_edit_payload: {update_payload:#?}");
 
         let response = self.request(Method::PATCH, url)

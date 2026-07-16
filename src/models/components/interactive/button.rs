@@ -12,7 +12,7 @@ use twilight_model::{
     }
 };
 
-use crate::{models::components::{context::ComponentContext, id::ID_GEN, interaction::ComponentInteraction}, traits::component::IntoTwilight};
+use crate::{error::BotResult, models::{command::response::CommandResponse, components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
 
 
 pub enum ButtonStyle {
@@ -45,14 +45,6 @@ pub enum Button {
 }
 
 impl Button {
-    pub (crate) fn get_id(&self) -> String {
-        match self {
-            Button::Link(button) => button.get_id(),
-            Button::Normal(button) => button.get_id(),
-            Button::Premium(button) => button.get_id(),
-        }
-    }
-
     pub fn new() -> ButtonKind<Empty> {
         ButtonKind::new()
     }
@@ -60,7 +52,7 @@ impl Button {
 
 pub struct ButtonKind<S> {
     pub (crate) inner: TwilightButton,
-    pub (crate) handler: Option<Box<dyn Fn(ComponentInteraction, ComponentContext) + Send + Sync>>,
+    pub(crate) handler: Option<Box<dyn InteractiveComponentHandler>>,
     pub (crate) _marker: PhantomData<S>
 }
 
@@ -68,7 +60,7 @@ impl ButtonKind<Empty> {
     pub fn new() -> Self {
         Self {
             inner: TwilightButton {
-                custom_id: Some(ID_GEN.next()),
+                custom_id: None,
                 id: None,
                 disabled: false,
                 emoji: None,
@@ -121,11 +113,22 @@ impl ButtonKind<Empty> {
 
 impl ButtonKind<Normal> {
     /// If is not specified an `on_click` method the interaction is sent to the base Component
-    pub fn on_click<F>(mut self, handler: F) -> Self 
-    where F: Fn(ComponentInteraction, ComponentContext) + Send + Sync + 'static {
-        self.handler = Some(Box::new(handler));
+    pub fn on_click<F, Fut>(mut self, handler: F) -> Self 
+    where 
+        F: Fn(ComponentInteraction, ComponentContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = BotResult<()>> + 'static,
+    {
+        self.handler = Some(Box::new(Handler(handler)));
         self
     }
+
+    pub (crate) async fn clicked(&self, interaction: ComponentInteraction, ctx: ComponentContext) -> BotResult<()> {
+        if let Some(handler) = &self.handler {
+            return handler.handle(interaction, ctx).await;
+        } else {
+            Ok(())
+        }
+    } 
 }
 
 macro_rules! impl_common_button_methods {
@@ -150,10 +153,6 @@ macro_rules! impl_into_button {
     ($(($state:ident, $variant:ident)),* $(,)?) => {
         $(
             impl ButtonKind<$state> {
-                pub fn get_id(&self) -> String {
-                    self.inner.custom_id.clone().unwrap_or("premium".into())
-                }
-
                 pub fn build(self) -> Button {
                     Button::$variant(self)
                 }
@@ -175,6 +174,16 @@ impl_into_button!(
     (Premium, Premium),
     (Link, Link),
 );
+
+impl IdAssignable for Button {
+    fn set_id(&mut self, id: &crate::models::components::id::HierarchicalId) {
+        match self {
+            Self::Normal(normal) => normal.inner.custom_id = Some(id.as_string()),
+            Self::Premium(_premium) => {},
+            Self::Link(_link) => {}
+        }
+    }
+}
 
 impl IntoTwilight<TwilightButton> for Button {
     fn into_twilight(self) -> TwilightButton {
