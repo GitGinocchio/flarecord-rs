@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use twilight_model::gateway::event::EventType;
+use twilight_model::gateway::{Intents, event::EventType};
 
 // Costanti di base
 pub const STATE_KEY: &str = "gateway_state";
@@ -32,17 +32,4 @@ pub fn is_forwarded_event_type(event_type: EventType) -> bool {
     false
 }
 
-// Intents (usando i bit shift come in TS)
-pub const INTENT_GUILDS: u32 = 1 << 0;
-pub const INTENT_GUILD_MESSAGES: u32 = 1 << 9;
-pub const INTENT_GUILD_MESSAGE_REACTIONS: u32 = 1 << 10;
-pub const INTENT_DIRECT_MESSAGES: u32 = 1 << 12;
-pub const INTENT_DIRECT_MESSAGE_REACTIONS: u32 = 1 << 13;
-pub const INTENT_MESSAGE_CONTENT: u32 = 1 << 15;
-
-pub const GATEWAY_INTENTS: u32 = INTENT_GUILDS 
-    | INTENT_GUILD_MESSAGES 
-    | INTENT_GUILD_MESSAGE_REACTIONS 
-    | INTENT_DIRECT_MESSAGES 
-    | INTENT_DIRECT_MESSAGE_REACTIONS 
-    | INTENT_MESSAGE_CONTENT;
+pub const GATEWAY_INTENTS: u64 = Intents::all().bits();

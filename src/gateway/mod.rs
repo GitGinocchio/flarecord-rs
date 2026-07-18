@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{mem::forget, sync::Arc};
 use futures::{TryStreamExt, lock::Mutex};
 use serde::de::DeserializeSeed;
 use serde_json::json;
@@ -13,7 +13,7 @@ use twilight_model::gateway::{
         },
     }}
 };
-use worker::*;
+use worker::{wasm_bindgen::JsValue, *};
 
 use crate::gateway::{constants::{ALARM_FALLBACK_DELAY_MS, CREDENTIALS_KEY, GATEWAY_BOT_URL, GATEWAY_INTENTS, GATEWAY_VERSION, RECONNECT_RATE_LIMIT, RECONNECT_RATE_WINDOW_MS, STATE_KEY, WEBHOOK_MAX_ATTEMPTS, is_forwarded_event_type}, credentials::GatewayCredentials, handle::GatewayHandle, inner::GatewayInner, state::GatewayState, status::{GatewayStatus, Status}, utils::{CloseAction, ConnectError, GatewayBotResponse, GatewayError, GatewayInfo, OpenWebSocketError, ReconnectOptions, ReconnectStrategy, can_resume, classify_close_code, is_private_hostname, to_http_url}};
 
@@ -103,18 +103,6 @@ impl DiscordGateway {
     }
 
     pub async fn http_post_disconnect(&self, _req: Request, _ctx: RouteContext<()>) -> Result<Response> {
-        if let Some(state) = self.load_state().await? && state.connected_at.is_some() {
-            return Response::from_json(&json!({
-                "message" : "Gateway already connected"
-            }))
-        }
-
-        if let Some(state) = self.load_state().await? && state.connected_at.is_none() {
-            return Response::from_json(&json!({
-                "message" : "Gateway already disconnected"
-            }))
-        }
-
         let message = self.disconnect().await?;
         Response::from_json(&json!({
             "message" : message,
@@ -190,11 +178,14 @@ impl DiscordGateway {
 
         let handle = self.as_handle();
 
-        // 5. Connessione interna
-        match DiscordGateway::connect_internal(&handle).await {
-            Ok(_) => Ok("connecting".into()),
-            Err(e) => Ok(e.error)
-        }
+        self.state.wait_until(async move {
+            DiscordGateway::connect_internal(&handle)
+                .await
+                .expect("Error connecting to Discord via websocket: ");
+            ()
+        });
+
+        Ok("connecting".into())
     }
 
     /// Disconnect from the Discord Gateway.
@@ -640,7 +631,7 @@ impl DiscordGateway {
 
         let identify = Identify::new(IdentifyInfo {
             compress: false,
-            intents: Intents::from_bits(GATEWAY_INTENTS as u64).unwrap_or(Intents::empty()),
+            intents: Intents::from_bits(GATEWAY_INTENTS).unwrap_or(Intents::empty()),
             large_threshold: 50, // Soglia per i membri
             presence: None,
             properties: IdentifyProperties::new(
@@ -754,11 +745,23 @@ impl DiscordGateway {
 
         let handle = handle.clone();
 
+        /*
+        // Forse possono essere utili queste due cose:
+        
+        let promise = wasm_bindgen_futures::future_to_promise( async move {
+            Ok(JsValue::null())
+        });
+
+        forget(promise);
+        */
+
+        // TODO: Sostituire e rimuovere handle e passare storage singolarmente dove serve
+        // riportare tutti gli handle a self e utilizzare al posto di spawn_local wait_until (almeno per il messaggio ready)
+        
         wasm_bindgen_futures::spawn_local(async move {
             let mut events = ws.events()
                 .map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })
                 .expect("Error opening websocket stream: ");
-
             loop {
                 match events.try_next().await {
                     Ok(Some(WebsocketEvent::Message(msg))) => {
@@ -779,6 +782,8 @@ impl DiscordGateway {
                     }
                 }
             }
+
+            ws.close(Some(0), Some("Something went wrong")).expect("Error closing websocket");
         });
 
         Ok(())
