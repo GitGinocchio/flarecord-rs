@@ -13,6 +13,7 @@ use twilight_model::gateway::{
         },
     }}
 };
+use wasm_bindgen::JsCast;
 use worker::{wasm_bindgen::JsValue, *};
 
 use crate::gateway::{constants::{ALARM_FALLBACK_DELAY_MS, CREDENTIALS_KEY, GATEWAY_BOT_URL, GATEWAY_INTENTS, GATEWAY_VERSION, RECONNECT_RATE_LIMIT, RECONNECT_RATE_WINDOW_MS, STATE_KEY, WEBHOOK_MAX_ATTEMPTS, is_forwarded_event_type}, credentials::GatewayCredentials, handle::GatewayHandle, inner::GatewayInner, state::GatewayState, status::{GatewayStatus, Status}, utils::{CloseAction, ConnectError, GatewayBotResponse, GatewayError, GatewayInfo, OpenWebSocketError, ReconnectOptions, ReconnectStrategy, can_resume, classify_close_code, is_private_hostname, to_http_url}};
@@ -24,30 +25,29 @@ pub mod state;
 pub mod inner;
 pub mod utils;
 pub mod handle;
+pub mod bridge;
 
 
 #[durable_object]
 pub struct DiscordGateway {
-    inner: Arc<Mutex<GatewayInner>>,
-    state: State,
-    env: Env,
+    inner: Arc<GatewayInner>,
 }
 
 impl DurableObject for DiscordGateway {
     fn new(state: State, env: Env) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(GatewayInner::default())),
-            state,
-            env,
+            inner: Arc::new(GatewayInner::new(env, state)),
         }
     }
 
     async fn fetch(&self, req: Request) -> Result<Response> {
+        let env = self.inner.env.clone();
+
         Router::new()
             .get_async("/status", async |_, _| self.http_get_status().await)
             .post_async("/connect", async |req, ctx| self.http_post_connect(req, ctx).await)
             .post_async("/disconnect", async |req, ctx| self.http_post_disconnect(req, ctx).await)
-            .run(req, self.env.clone())
+            .run(req, env)
             .await
     }
 
@@ -63,9 +63,8 @@ impl DurableObject for DiscordGateway {
                 let target_time_ms = js_sys::Date::now() + ALARM_FALLBACK_DELAY_MS as f64;
                 let date = js_sys::Date::new(&target_time_ms.into());
 
-                self.state.storage()
-                    .set_alarm(ScheduledTime::new(date))
-                    .await?;
+                let storage_guard = self.inner.storage.lock().await;
+                storage_guard.set_alarm(ScheduledTime::new(date)).await?;
                 
                 Response::empty()
             }
@@ -152,15 +151,15 @@ impl DiscordGateway {
             webhook_url: creds.webhook_url,
             webhook_secret: creds.webhook_secret,
         };
-        
-        self.state.storage()
-            .put(CREDENTIALS_KEY, &stored)
-            .await
-            .map_err(|e| e.to_string())?;
 
         {
-            let mut inner = self.inner.lock().await;
-            inner.cached_credentials = Some(stored);
+            let storage_guard = self.inner.storage.lock().await;
+            storage_guard.put(CREDENTIALS_KEY, &stored)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let mut creds = self.inner.cached_credentials.lock().await;
+            *creds = Some(stored);
         }
 
         // 4. Reset stato riconnessione
@@ -170,20 +169,15 @@ impl DiscordGateway {
             .unwrap_or_default();
         existing_state.reconnect_disabled = false;
         self.save_state(&existing_state).await.map_err(|e| e.to_string())?;
-    
-        {
-            let mut inner = self.inner.lock().await;
-            inner.reconnect_disabled = false;
-        }
+
+        let mut reconnect_disabled = self.inner.reconnect_disabled.lock().await;
+        *reconnect_disabled = false;
 
         let handle = self.as_handle();
 
-        self.state.wait_until(async move {
-            DiscordGateway::connect_internal(&handle)
-                .await
-                .expect("Error connecting to Discord via websocket: ");
-            ()
-        });
+        DiscordGateway::connect_internal(&handle)
+            .await
+            .expect("Error connecting to Discord via websocket: ");
 
         Ok("connecting".into())
     }
@@ -195,16 +189,16 @@ impl DiscordGateway {
         // Assicurati che disconnect_internal gestisca il close del WebSocketPair
         self.disconnect_internal().await.map_err(|e| e.to_string())?;
 
+        let guard = self.inner.storage.lock().await;
+
         // 2. Elimina le credenziali dallo storage persistente
-        self.state.storage()
+        guard
             .delete(CREDENTIALS_KEY)
             .await
             .map_err(|e| e.to_string())?;
 
-        let mut inner = self.inner.lock().await;
-
-        // 3. Pulisci la cache in-memory
-        inner.cached_credentials = None;
+        let mut guard = self.inner.cached_credentials.lock().await;
+        *guard = None;
 
         // 4. Restituisci lo stato di successo
         Ok("disconnected".to_string())
@@ -217,10 +211,10 @@ impl DiscordGateway {
             .map_err(|e| e.to_string())?
             .unwrap_or_else(|| GatewayState::default());
 
-        let inner = self.inner.lock().await;
+        let guard = self.inner.upstream.lock().await;
         
         // Logica per determinare lo stato corrente
-        let status_str = if inner.upstream.is_some() {
+        let status_str = if guard.is_some() {
             Status::Connected
         } else if state.ws_url.is_some() {
             Status::Connecting
@@ -239,8 +233,8 @@ impl DiscordGateway {
 
     async fn alarm_internal(handle: &GatewayHandle) -> Result<(), worker::Error> {
         {
-            let inner = handle.inner.lock().await;
-            if inner.reconnect_disabled {
+            let guard = handle.inner.reconnect_disabled.lock().await;
+            if *guard {
                 return Ok(());
             }
         }
@@ -258,9 +252,11 @@ impl DiscordGateway {
 
         // 2. Stato terminale
         if state.reconnect_disabled {
-            let mut inner = handle.inner.lock().await;
-            inner.reconnect_disabled = true;
-            handle.storage.delete_alarm().await?;
+            let mut guard = handle.inner.reconnect_disabled.lock().await;
+            *guard = true;
+
+            let guard = handle.inner.storage.lock().await;
+            guard.delete_alarm().await?;
             return Ok(());
         }
 
@@ -269,8 +265,8 @@ impl DiscordGateway {
         if let Some(cooldown) = state.identify_cooldown_until {
             if now < cooldown {
                 let date = js_sys::Date::new(&(now + cooldown).into());
-                handle.storage
-                    .set_alarm(ScheduledTime::new(date))
+                let guard = handle.inner.storage.lock().await;
+                guard.set_alarm(ScheduledTime::new(date))
                     .await?;
                 return Ok(());
             }
@@ -283,8 +279,8 @@ impl DiscordGateway {
         }
 
         let upstream_is_none = {
-            let inner = handle.inner.lock().await;
-            inner.upstream.is_none()
+            let guard = handle.inner.upstream.lock().await;
+            guard.is_none()
         };
 
         // 5. DO Eviction: WebSocket reference persa
@@ -332,8 +328,9 @@ impl DiscordGateway {
 
         // 1. Già connesso o terminale
         {
-            let inner = handle.inner.lock().await;
-            if inner.upstream.is_some() {
+
+            let guard = handle.inner.upstream.lock().await;
+            if guard.is_some() {
                 return Ok(())
             }
         }
@@ -393,7 +390,8 @@ impl DiscordGateway {
         if needs_identify {
             if let Some(cooldown) = state.identify_cooldown_until {
                 if now < cooldown {
-                    let _ = handle.storage.set_alarm(ScheduledTime::new(js_sys::Date::new(&cooldown.into()))).await;
+                    let guard = handle.inner.storage.lock().await;
+                    let _ = guard.set_alarm(ScheduledTime::new(js_sys::Date::new(&cooldown.into()))).await;
                     return Err(ConnectError { error: "identify cooldown active".to_string(), retry_scheduled: true });
                 }
             }
@@ -403,7 +401,8 @@ impl DiscordGateway {
                     state.identify_cooldown_until = Some(now + reset as f64);
                     state.ws_url = None;
                     DiscordGateway::save_state_from_handle(handle, &state).await?;
-                    let _ = handle.storage.set_alarm(ScheduledTime::new(js_sys::Date::new(&(now + reset as f64).into()))).await;
+                    let guard = handle.inner.storage.lock().await;
+                    let _ = guard.set_alarm(ScheduledTime::new(js_sys::Date::new(&(now + reset as f64).into()))).await;
                     return Err(ConnectError { error: "session start limit exhausted".to_string(), retry_scheduled: true });
                 }
             }
@@ -445,11 +444,12 @@ impl DiscordGateway {
     }
 
     async fn disconnect_internal(&self) -> Result<(), worker::Error> {
-        let mut inner = self.inner.lock().await;
+        let mut upstream_guard = self.inner.upstream.lock().await;
 
         // 2. Gestione WebSocket (upstream)
-        if let Some(upstream) = inner.upstream.take() {
-            inner.suppress_reconnect = true;
+        if let Some(upstream) = upstream_guard.take() {
+            let mut guard = self.inner.suppress_reconnect.lock().await;
+            *guard = true;
             
             // Chiudi il WebSocket. In workers-rs, close() è un'operazione che può fallire,
             // quindi usiamo un match o ignore con un '_' se vogliamo silenziare l'errore.
@@ -457,17 +457,15 @@ impl DiscordGateway {
         }
 
         // 3. Pulisci lo stato nel Durable Object storage
-        self.state.storage()
-            .delete(STATE_KEY)
-            .await?;
+        let storage_guard = self.inner.storage.lock().await;
+        storage_guard.delete(STATE_KEY).await?;
         
         // 4. Reset variabili di stato
-        inner.reconnect_disabled = false;
+        let mut guard = self.inner.reconnect_disabled.lock().await;
+        *guard = false;
         
         // 5. Cancella l'allarme (importante per non avere heartbeat residui)
-        self.state.storage()
-            .delete_alarm()
-            .await?;
+        storage_guard.delete_alarm().await?;
 
         Ok(())
     }
@@ -498,16 +496,16 @@ impl DiscordGateway {
 
         DiscordGateway::save_state_from_handle(handle, &state).await?;
 
-        // Chiusura WebSocket (Gestione del borrow_mut)
-        {
-            let mut inner = handle.inner.lock().await;
-            if inner.upstream.is_some() {
-                inner.reconnect_planned = true;
-                if let Some(ws) = inner.upstream.take() {
-                    let _ = ws.close(Some(4000), Some("reconnecting")); // 4000 è il codice personalizzato
-                }
+        // Chiusura WebSocket (Gestione del borrow_mut
+        let mut upstream_guard = handle.inner.upstream.lock().await;
+        if upstream_guard.is_some() {
+            let mut guard = handle.inner.reconnect_planned.lock().await;
+            *guard = true;
+
+            if let Some(ws) = upstream_guard.take() {
+                let _ = ws.close(Some(4000), Some("reconnecting")); // 4000 è il codice personalizzato
             }
-        } // Borrow rilasciato qui
+        }
 
         console_warn!(
             "discord-gateway: scheduling reconnect; attempts: {}, delay: {}ms",
@@ -517,7 +515,8 @@ impl DiscordGateway {
 
         // Setup Allarme
         let schedule = js_sys::Date::new(&(js_sys::Date::now() + delay).into());
-        handle.storage.set_alarm(ScheduledTime::new(schedule)).await?;
+        let guard = handle.inner.storage.lock().await;
+        guard.set_alarm(ScheduledTime::new(schedule)).await?;
 
         Ok(())
     }
@@ -544,22 +543,22 @@ impl DiscordGateway {
         DiscordGateway::save_state_from_handle(handle, &state).await?;
 
         // 2. Chiusura WebSocket (Scope limitato per rilasciare il borrow)
-        {
-            let mut inner = handle.inner.lock().await;
-            if inner.upstream.is_some() {
-                inner.reconnect_planned = true;
-                if let Some(ws) = inner.upstream.take() {
-                    let _ = ws.close(Some(4000), Some("reconnecting"));
-                }
+        let mut upstream_guard = handle.inner.upstream.lock().await;
+        if upstream_guard.is_some() {
+            let mut guard = handle.inner.reconnect_planned.lock().await;
+            *guard = true;
+            
+            if let Some(ws) = upstream_guard.take() {
+                let _ = ws.close(Some(4000), Some("reconnecting"));
             }
         }
 
         // 3. Scheduling dell'allarme di riconnessione (1 secondo)
         let delay_ms = 1000.0;
         let schedule = js_sys::Date::new(&(js_sys::Date::now() + delay_ms).into());
-        
-        handle.storage
-            .set_alarm(ScheduledTime::new(schedule))
+
+        let guard = handle.inner.storage.lock().await;
+        guard.set_alarm(ScheduledTime::new(schedule))
             .await?;
 
         Ok(())
@@ -572,21 +571,21 @@ impl DiscordGateway {
     /// protection across evictions.
     async fn is_reconnect_rate_limited(handle: &GatewayHandle) -> bool {
         let now = js_sys::Date::now();
-        let mut inner = handle.inner.lock().await;
 
         // Rimuove i timestamp più vecchi della finestra (in-place)
-        inner.reconnect_timestamps.retain(|&t| now - t < RECONNECT_RATE_WINDOW_MS as f64);
+        let mut guard = handle.inner.reconnect_timestamps.lock().await;
+        guard.retain(|&t| now - t < RECONNECT_RATE_WINDOW_MS as f64);
 
         // Verifica se abbiamo superato il limite
-        inner.reconnect_timestamps.len() >= RECONNECT_RATE_LIMIT as usize
+        guard.len() >= RECONNECT_RATE_LIMIT as usize
     }
 
     async fn identify_or_resume(handle: &GatewayHandle, state: &mut GatewayState) -> Result<(), worker::Error> {
         // 1. Recupero WS e Credenziali
 
         let ws = {
-            let guard = handle.inner.lock().await;
-            guard.upstream.clone()
+            let guard = handle.inner.upstream.lock().await;
+            guard.clone()
         };
 
         let ws = match ws {
@@ -663,21 +662,20 @@ impl DiscordGateway {
         DiscordGateway::save_state_from_handle(handle, state).await?;
 
         {
-            let mut guard = handle.inner.lock().await;
-            guard.reconnect_planned = true;
+            let mut guard = handle.inner.reconnect_planned.lock().await;
+            *guard = true;
         }
         
         let _ = ws.close(Some(4000), Some(reason)); // 4000 è il codice di riconnessione interna
 
-        {
-            let mut guard = handle.inner.lock().await;
-            guard.upstream = None;
-        }
+        let mut guard = handle.inner.upstream.lock().await;
+        *guard = None;
 
         let scheduled_date = js_sys::Date::new(&(js_sys::Date::now() + (cooldown as f64)).into());
         let scheduled_time = ScheduledTime::new(scheduled_date);
-        
-        handle.storage.set_alarm(scheduled_time).await?;
+
+        let guard = handle.inner.storage.lock().await;
+        guard.set_alarm(scheduled_time).await?;
         Ok(())
     }
 
@@ -688,8 +686,8 @@ impl DiscordGateway {
 
         // 2. Aggiorna lo stato in memoria (inner)
         {
-            let mut inner = handle.inner.lock().await;
-            inner.reconnect_disabled = true;
+            let mut guard = handle.inner.reconnect_disabled.lock().await;
+            *guard = true;
         }
 
         // 3. Aggiorna il modello di persistenza
@@ -704,7 +702,9 @@ impl DiscordGateway {
         }
 
         DiscordGateway::save_state_from_handle(handle, &state).await?;
-        handle.storage.delete_alarm().await?;
+
+        let guard = handle.inner.storage.lock().await;
+        guard.delete_alarm().await?;
 
         console_error!("discord-gateway: stopped reconnecting due to close code {code} and reason {reason}");
 
@@ -737,31 +737,24 @@ impl DiscordGateway {
         ws.accept().map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })?;
 
         {
-            let mut inner = handle.inner.lock().await;
-            inner.upstream = Some(ws.clone());
-            inner.suppress_reconnect = false;
-            inner.reconnect_planned = false;
+            let mut guard = handle.inner.upstream.lock().await;
+            *guard = Some(ws.clone());
+            let mut guard = handle.inner.suppress_reconnect.lock().await;
+            *guard = false;
+            let mut guard = handle.inner.reconnect_planned.lock().await;
+            *guard = false;
         }
 
+        let state_guard = handle.inner.state.lock().await;
+        
         let handle = handle.clone();
 
-        /*
-        // Forse possono essere utili queste due cose:
-        
-        let promise = wasm_bindgen_futures::future_to_promise( async move {
-            Ok(JsValue::null())
-        });
 
-        forget(promise);
-        */
-
-        // TODO: Sostituire e rimuovere handle e passare storage singolarmente dove serve
-        // riportare tutti gli handle a self e utilizzare al posto di spawn_local wait_until (almeno per il messaggio ready)
-        
-        wasm_bindgen_futures::spawn_local(async move {
+        state_guard.wait_until(async move {
             let mut events = ws.events()
                 .map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })
                 .expect("Error opening websocket stream: ");
+
             loop {
                 match events.try_next().await {
                     Ok(Some(WebsocketEvent::Message(msg))) => {
@@ -784,6 +777,7 @@ impl DiscordGateway {
             }
 
             ws.close(Some(0), Some("Something went wrong")).expect("Error closing websocket");
+
         });
 
         Ok(())
@@ -865,17 +859,19 @@ impl DiscordGateway {
 
         // 1. Reset upstream e controllo logica di riconnessione
         let (should_reconnect, strategy) = {
-            let mut inner = handle.inner.lock().await;
-            
             // Se il socket attivo è cambiato nel frattempo, usciamo
             // Nota: Qui dovresti passare l'identificatore del socket se ne hai più di uno,
             // ma nel tuo caso (DO single-socket), basta controllare se upstream è ancora quello
-            inner.upstream = None;
+            let mut guard  = handle.inner.upstream.lock().await;
+            *guard = None;
 
-            if inner.suppress_reconnect {
-                inner.suppress_reconnect = false;
+            let mut suppress_guard = handle.inner.suppress_reconnect.lock().await;
+            let reconnect_guard = handle.inner.reconnect_planned.lock().await;
+
+            if *suppress_guard {
+                *suppress_guard = false;
                 (false, None)
-            } else if inner.reconnect_planned {
+            } else if *reconnect_guard {
                 (false, None)
             } else {
                 (true, Some(ReconnectStrategy::ResumeOrIdentify))
@@ -898,19 +894,23 @@ impl DiscordGateway {
         console_warn!("discord-gateway: WebSocket closed with code {code} and reason: {reason}");
 
         let action = {
-            let mut inner = handle.inner.lock().await;
-            inner.upstream = None;
+            let mut guard_upstream = handle.inner.upstream.lock().await;
+            *guard_upstream = None;
+            
+            let mut guard_suppress = handle.inner.suppress_reconnect.lock().await;
+            let mut planned_guard = handle.inner.reconnect_planned.lock().await;
+            let mut disabled_guard = handle.inner.reconnect_disabled.lock().await;
 
-            if inner.suppress_reconnect {
-                inner.suppress_reconnect = false;
+            if *guard_suppress {
+                *guard_suppress = false;
                 None // Nessuna azione
-            } else if inner.reconnect_planned {
-                inner.reconnect_planned = false;
+            } else if *planned_guard {
+                *planned_guard = false;
                 None // Nessuna azione
             } else {
                 let policy = classify_close_code(code);
                 if !policy.should_reconnect {
-                    inner.reconnect_disabled = true;
+                    *disabled_guard = true;
                     Some(CloseAction::Stop(code, reason.clone()))
                 } else {
                     Some(CloseAction::Reconnect(policy))
@@ -957,7 +957,9 @@ impl DiscordGateway {
         // NOTA: set_alarm accetta un timestamp in millisecondi
         let alarm_time = js_sys::Date::now() as u64 + first_delay;
         let scheduled_time = ScheduledTime::new(js_sys::Date::new(&alarm_time.into()));
-        handle.storage.set_alarm(scheduled_time).await?;
+
+        let guard = handle.inner.storage.lock().await;
+        guard.set_alarm(scheduled_time).await?;
 
         Ok(())
     }
@@ -1018,8 +1020,8 @@ impl DiscordGateway {
         // Aggiungiamo il timestamp attuale ai tentativi di riconnessione
         let now = js_sys::Date::now();
         {
-            let mut inner = handle.inner.lock().await;
-            inner.reconnect_timestamps.push_back(now);
+            let mut timestamps_guard = handle.inner.reconnect_timestamps.lock().await;
+            timestamps_guard.push_back(now);
         }
 
         let options = ReconnectOptions { 
@@ -1055,9 +1057,10 @@ impl DiscordGateway {
 
         // 2. Chiusura del socket corrente
         {
-            let mut inner = handle.inner.lock().await;
-            if let Some(ws) = inner.upstream.take() {
-                inner.reconnect_planned = true;
+            let mut upstream_guard = handle.inner.upstream.lock().await;
+            if let Some(ws) = upstream_guard.take() {
+                let mut planned_guard = handle.inner.reconnect_planned.lock().await;
+                *planned_guard = true;
                 // Chiudiamo il WebSocket. In workers-rs il metodo close richiede 
                 // codice di chiusura e ragione.
                 let _ = ws.close(Some(4000), Some("invalid session"));
@@ -1069,8 +1072,9 @@ impl DiscordGateway {
         let alarm_time = js_sys::Date::now() as u64 + delay as u64;
 
         let scheduled_time = ScheduledTime::new(js_sys::Date::new(&alarm_time.into()));
-        
-        handle.storage.set_alarm(scheduled_time).await?;
+
+        let guard = handle.inner.storage.lock().await;
+        guard.set_alarm(scheduled_time).await?;
 
         Ok(())
     }
@@ -1084,15 +1088,16 @@ impl DiscordGateway {
             let scheduled_time = ScheduledTime::new(next_beat);
             
             // Impostiamo l'allarme tramite lo storage
-            handle.storage.set_alarm(scheduled_time).await?;
+            let guard = handle.inner.storage.lock().await;
+            guard.set_alarm(scheduled_time).await?;
         }
         Ok(())
     }
 
     async fn send_heartbeat(handle: &GatewayHandle, state: &GatewayState) -> Result<(), worker::Error> {
         let ws = {
-            let guard = handle.inner.lock().await;
-            guard.upstream.clone()
+            let guard = handle.inner.upstream.lock().await;
+            guard.clone()
         };
 
         if let Some(ws) = ws {
@@ -1183,40 +1188,41 @@ impl DiscordGateway {
     // State
 
     async fn save_state(&self, state: &GatewayState) -> Result<(), worker::Error> {
-        self.state.storage().put(STATE_KEY, state).await
+        let guard = self.inner.storage.lock().await;
+        guard.put(STATE_KEY, state).await
     }
 
     async fn save_state_from_handle(handle: &GatewayHandle, state: &GatewayState) -> Result<(), worker::Error> {
-        handle.storage.put(STATE_KEY, state).await
+        let guard = handle.inner.storage.lock().await;
+        guard.put(STATE_KEY, state).await
     }
 
     async fn load_state(&self) -> Result<Option<GatewayState>, worker::Error> {
-        let state = self.state.storage().get::<GatewayState>(STATE_KEY).await?;
+        let guard = self.inner.storage.lock().await;
+        let state = guard.get::<GatewayState>(STATE_KEY).await?;
         Ok(state)
     }
 
     async fn load_state_from_handle(handle: &GatewayHandle) -> Result<Option<GatewayState>, worker::Error> {
-        let state = handle.storage.get::<GatewayState>(STATE_KEY).await?;
+        let guard = handle.inner.storage.lock().await;
+        let state = guard.get::<GatewayState>(STATE_KEY).await?;
         Ok(state)
     }
 
     #[allow(unused)]
     async fn load_credentials(&self) -> Result<Option<GatewayCredentials>, worker::Error> {
         // 1. Controlla la cache nel RefCell
-        {
-            let inner = self.inner.lock().await;
-            if let Some(ref creds) = inner.cached_credentials {
-                return Ok(Some(creds.clone()));
-            }
+        let mut guard = self.inner.cached_credentials.lock().await;
+        if let Some(ref creds) = *guard {
+            return Ok(Some(creds.clone()));
         }
 
-        // 2. Carica dallo storage se la cache è vuota
-        let creds = self.state.storage().get::<GatewayCredentials>(CREDENTIALS_KEY).await?;
+        let mut storage_guard = self.inner.storage.lock().await;
+        let creds = storage_guard.get::<GatewayCredentials>(CREDENTIALS_KEY).await?;
 
         // 3. Popola la cache
         if let Some(ref c) = creds {
-            let mut inner = self.inner.lock().await;
-            inner.cached_credentials = Some(c.clone());
+            *guard = Some(c.clone());
         }
 
         Ok(creds)
@@ -1224,26 +1230,24 @@ impl DiscordGateway {
 
     async fn load_credentials_from_handle(handle: &GatewayHandle) -> Result<Option<GatewayCredentials>, worker::Error> {
         // 1. Controlla la cache nel RefCell
-        {
-            let inner = handle.inner.lock().await;
-            if let Some(ref creds) = inner.cached_credentials {
-                return Ok(Some(creds.clone()));
-            }
+        let mut guard = handle.inner.cached_credentials.lock().await;
+        if let Some(ref creds) = *guard {
+            return Ok(Some(creds.clone()));
         }
 
         // 2. Carica dallo storage se la cache è vuota
-        let creds = handle.storage.get::<GatewayCredentials>(CREDENTIALS_KEY).await?;
+        let storage_guard = handle.inner.storage.lock().await;
+        let creds = storage_guard.get::<GatewayCredentials>(CREDENTIALS_KEY).await?;
 
         // 3. Popola la cache
         if let Some(ref c) = creds {
-            let mut inner = handle.inner.lock().await;
-            inner.cached_credentials = Some(c.clone());
+            *guard = Some(c.clone());
         }
 
         Ok(creds)
     }
 
     fn as_handle(&self) -> GatewayHandle {
-        GatewayHandle::from_gateway(self)
+        GatewayHandle::from(self)
     }
 }

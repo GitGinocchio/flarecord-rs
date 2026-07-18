@@ -1,35 +1,39 @@
-use std::{collections::VecDeque, sync::{Arc, Mutex}};
+use std::{collections::VecDeque, sync::Arc};
 
-use worker::WebSocket;
+use futures::lock::Mutex;
+use worker::{Env, State, Storage, WebSocket};
 
 use crate::gateway::credentials::GatewayCredentials;
 
+
 pub struct GatewayInner {
-    pub upstream: Option<WebSocket>,
+    pub upstream: Arc<Mutex<Option<WebSocket>>>,
 
-    pub suppress_reconnect: bool,
-    pub reconnect_planned: bool,
-    pub reconnect_disabled: bool,
-    
-    pub reconnect_timestamps: VecDeque<f64>,
-    
-    pub cached_credentials: Option<GatewayCredentials>,
+    pub state: Arc<Mutex<State>>,
+    pub storage: Arc<Mutex<Storage>>,
+    pub env: Env,
 
-    // Capire a cosa serviva questo
-    #[allow(unused)]
-    pub processor_lock: Arc<Mutex<()>>,
+    pub suppress_reconnect: Arc<Mutex<bool>>,
+    pub reconnect_planned: Arc<Mutex<bool>>,
+    pub reconnect_disabled: Arc<Mutex<bool>>,
+    
+    pub reconnect_timestamps: Arc<Mutex<VecDeque<f64>>>,
+    
+    pub cached_credentials: Arc<Mutex<Option<GatewayCredentials>>>,
 }
 
-impl Default for GatewayInner {
-    fn default() -> Self {
+impl GatewayInner {
+    pub fn new(env: Env, state: State) -> Self {
         Self {
-            upstream: None,
-            suppress_reconnect: false,
-            reconnect_planned: false,
-            reconnect_disabled: false,
-            reconnect_timestamps: VecDeque::new(),
-            cached_credentials: None,
-            processor_lock: Arc::new(Mutex::new(()))
+            env: env,
+            storage: Arc::new(Mutex::new(state.storage())),
+            state: Arc::new(Mutex::new(state)),
+            upstream: Arc::new(Mutex::new(None)),
+            suppress_reconnect: Arc::new(Mutex::new(false)),
+            reconnect_planned: Arc::new(Mutex::new(false)),
+            reconnect_disabled: Arc::new(Mutex::new(false)),
+            reconnect_timestamps: Arc::new(Mutex::new(VecDeque::new())),
+            cached_credentials: Arc::new(Mutex::new(None))
         }
     }
 }
