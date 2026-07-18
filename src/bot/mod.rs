@@ -90,6 +90,9 @@ impl Bot {
         let segments: Vec<&str> = endpoint.split('/').filter(|s| !s.is_empty()).collect();
 
         match (segments.as_slice(), method) {
+            ([.., "gateway", "status"], Method::Get) => crate::api::gateway::status::status(env, token).await,
+            ([.., "gateway", "connect"], Method::Post) => crate::api::gateway::connect::connect(req, env, token).await,
+            ([.., "gateway", "disconnect"], Method::Post) => crate::api::gateway::disconnect::disconnect(env, token).await,
             ([.., "sync"], Method::Post) => crate::api::sync::sync(env, token).await,
             ([.., "health"], Method::Get) => crate::api::health::health(env, token).await,
             ([.., "version"], Method::Get) => crate::api::version::version(env).await,

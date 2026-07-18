@@ -74,8 +74,8 @@ impl Component for MyComponent {
             .build();
         
         let section = Section::new()
-            .component(text_display)
             .accessory(button)
+            .component(text_display)
             .build();
 
         let action_row = ActionRow::new()

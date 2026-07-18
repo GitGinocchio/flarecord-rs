@@ -3,6 +3,8 @@ pub (crate) mod utils;
 pub (crate) mod services;
 pub (crate) mod api;
 
+pub (crate) mod gateway;
+
 pub mod bot;
 pub mod error;
 pub mod models;
