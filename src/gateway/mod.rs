@@ -3,7 +3,7 @@ use futures::{TryStreamExt, lock::Mutex};
 use serde::de::DeserializeSeed;
 use serde_json::json;
 use twilight_model::gateway::{
-    Intents, event::{DispatchEvent, EventType, GatewayEvent, GatewayEventDeserializer}, payload::{incoming::Hello, outgoing::{
+    Intents, ShardId, event::{DispatchEvent, EventType, GatewayEvent, GatewayEventDeserializer}, payload::{incoming::Hello, outgoing::{
         Heartbeat, 
         Identify, 
         Resume, 
@@ -13,10 +13,42 @@ use twilight_model::gateway::{
         },
     }}
 };
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, prelude::Closure};
 use worker::{wasm_bindgen::JsValue, *};
 
-use crate::gateway::{constants::{ALARM_FALLBACK_DELAY_MS, CREDENTIALS_KEY, GATEWAY_BOT_URL, GATEWAY_INTENTS, GATEWAY_VERSION, RECONNECT_RATE_LIMIT, RECONNECT_RATE_WINDOW_MS, STATE_KEY, WEBHOOK_MAX_ATTEMPTS, is_forwarded_event_type}, credentials::GatewayCredentials, handle::GatewayHandle, inner::GatewayInner, state::GatewayState, status::{GatewayStatus, Status}, utils::{CloseAction, ConnectError, GatewayBotResponse, GatewayError, GatewayInfo, OpenWebSocketError, ReconnectOptions, ReconnectStrategy, can_resume, classify_close_code, is_private_hostname, to_http_url}};
+use crate::gateway::{
+    constants::{
+        ALARM_FALLBACK_DELAY_MS,
+        CREDENTIALS_KEY, 
+        GATEWAY_BOT_URL, 
+        GATEWAY_INTENTS, 
+        GATEWAY_VERSION, 
+        RECONNECT_RATE_LIMIT, 
+        RECONNECT_RATE_WINDOW_MS, 
+        STATE_KEY, 
+        WEBHOOK_MAX_ATTEMPTS, 
+        is_forwarded_event_type
+    }, 
+    credentials::GatewayCredentials, 
+    handle::GatewayHandle, 
+    inner::GatewayInner, 
+    state::GatewayState, 
+    status::{GatewayStatus, Status}, 
+    utils::{
+        CloseAction, 
+        ConnectError, 
+        GatewayBotResponse, 
+        GatewayError, 
+        GatewayInfo, 
+        OpenWebSocketError, 
+        ReconnectOptions, 
+        ReconnectStrategy, 
+        can_resume, 
+        classify_close_code,
+        is_private_hostname, 
+        to_http_url
+    }
+};
 
 pub mod credentials;
 pub mod constants;
@@ -453,7 +485,7 @@ impl DiscordGateway {
             
             // Chiudi il WebSocket. In workers-rs, close() è un'operazione che può fallire,
             // quindi usiamo un match o ignore con un '_' se vogliamo silenziare l'errore.
-            let _ = upstream.close(Some(1000), Some("client disconnect"));
+            let _ = upstream.close_with_code_and_reason(1000, "client disconnect");
         }
 
         // 3. Pulisci lo stato nel Durable Object storage
@@ -503,7 +535,7 @@ impl DiscordGateway {
             *guard = true;
 
             if let Some(ws) = upstream_guard.take() {
-                let _ = ws.close(Some(4000), Some("reconnecting")); // 4000 è il codice personalizzato
+                let _ = ws.close_with_code_and_reason(4000, "reconnecting"); // 4000 è il codice personalizzato
             }
         }
 
@@ -549,7 +581,7 @@ impl DiscordGateway {
             *guard = true;
             
             if let Some(ws) = upstream_guard.take() {
-                let _ = ws.close(Some(4000), Some("reconnecting"));
+                let _ = ws.close_with_code_and_reason(4000, "reconnecting");
             }
         }
 
@@ -606,7 +638,8 @@ impl DiscordGateway {
                 bot_token
             );
 
-            ws.send(&resume).map_err(|e| worker::Error::from(e.to_string()))?;
+            ws.send_with_str(&serde_json::json!(resume).to_string()).map_err(|e| worker::Error::from(e.as_string().unwrap_or_default()))?;
+
             return Ok(());
         }
 
@@ -631,18 +664,20 @@ impl DiscordGateway {
         let identify = Identify::new(IdentifyInfo {
             compress: false,
             intents: Intents::from_bits(GATEWAY_INTENTS).unwrap_or(Intents::empty()),
-            large_threshold: 50, // Soglia per i membri
+            large_threshold: 0, // Soglia per i membri
             presence: None,
             properties: IdentifyProperties::new(
                 "discord-gateway-cloudflare-do", 
                 "discord-gateway-cloudflare-do",
                 "cloudflare"
             ),
-            shard: None,
+            shard: Some(ShardId::new(0, 1)),
             token: bot_token
         });
 
-        ws.send(&identify).map_err(|e| worker::Error::from(e.to_string()))?;
+        let payload = serde_json::json!(identify);
+
+        ws.send_with_str(&payload.to_string()).map_err(|e| worker::Error::from(e.as_string().unwrap_or_default()))?;
 
         // 5. Aggiornamento stato dopo Identify riuscito
         if let Some(ref mut remaining) = state.session_start_remaining {
@@ -656,7 +691,7 @@ impl DiscordGateway {
     }
 
     // Helper per ridurre il boilerplate del blocco identify
-    async fn handle_identify_block(handle: &GatewayHandle, ws: WebSocket, state: &mut GatewayState, reason: &str, cooldown: u64) -> Result<(), worker::Error> {
+    async fn handle_identify_block(handle: &GatewayHandle, ws: worker::web_sys::WebSocket, state: &mut GatewayState, reason: &str, cooldown: u64) -> Result<(), worker::Error> {
         state.ws_url = None;
         state.identify_cooldown_until = Some(cooldown as f64);
         DiscordGateway::save_state_from_handle(handle, state).await?;
@@ -666,7 +701,7 @@ impl DiscordGateway {
             *guard = true;
         }
         
-        let _ = ws.close(Some(4000), Some(reason)); // 4000 è il codice di riconnessione interna
+        let _ = ws.close_with_code_and_reason(4000, reason); // 4000 è il codice di riconnessione interna
 
         let mut guard = handle.inner.upstream.lock().await;
         *guard = None;
@@ -712,29 +747,13 @@ impl DiscordGateway {
     }
 
     async fn open_websocket(handle: &GatewayHandle, url: &str) -> Result<(), OpenWebSocketError> {
-        let ws_url = format!("{}?v={}&encoding=json", to_http_url(url), GATEWAY_VERSION);
+        let ws_url = format!("{}?v={}&encoding=json", url, GATEWAY_VERSION);
 
-        let headers = Headers::new();
-        headers.set("Upgrade", "websocket").ok();
-
-        let mut init = RequestInit::new();
-        init.with_method(Method::Get);
-        init.with_headers(headers);
-
-        let request = Request::new_with_init(&ws_url, &init)
-            .map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })?;
-
-        let response = Fetch::Request(request).send().await
-            .map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })?;
-
-        let maybe_error = OpenWebSocketError {
-            error: format!("failed to connect ({})", response.status_code()),
-            retryable: response.status_code() == 429 || response.status_code() >= 500 || response.status_code() == 0,
-        };
-
-        let ws = response.websocket().ok_or_else(|| maybe_error)?;
-
-        ws.accept().map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })?;
+        let ws = worker::web_sys::WebSocket::new(&ws_url)
+            .map_err(|e| OpenWebSocketError { 
+                error: e.as_string().unwrap_or_default(), 
+                retryable: false 
+        })?;
 
         {
             let mut guard = handle.inner.upstream.lock().await;
@@ -745,40 +764,67 @@ impl DiscordGateway {
             *guard = false;
         }
 
-        let state_guard = handle.inner.state.lock().await;
-        
-        let handle = handle.clone();
+        let handle_inner = handle.clone();
 
+        let on_message_callback = Closure::wrap::<dyn Fn(worker::web_sys::MessageEvent) + 'static>(Box::new(move |event: worker::web_sys::MessageEvent| {
+            let global = js_sys::global();
 
-        state_guard.wait_until(async move {
-            let mut events = ws.events()
-                .map_err(|e| OpenWebSocketError { error: e.to_string(), retryable: true })
-                .expect("Error opening websocket stream: ");
-
-            loop {
-                match events.try_next().await {
-                    Ok(Some(WebsocketEvent::Message(msg))) => {
-                        if let Some(text) = msg.text() {
-                            if let Err(e) = DiscordGateway::handle_gateway_message(&handle, text.as_str()).await {
-                                console_error!("discord-gateway: message handler error: {:?}", e);
-                            }
-                        }
-                    }
-                    Ok(Some(WebsocketEvent::Close(event))) => {
-                        DiscordGateway::handle_websocket_close(&handle, event.code(), event.reason()).await;
-                        break;
-                    }
-                    Ok(None) => continue,
-                    Err(e) => {
-                        DiscordGateway::handle_websocket_error(&handle, e).await;
-                        break;
-                    }
+            if let Ok(handle_func) = js_sys::Reflect::get(&global, &"handleSocketEvent".into()) {   
+                if let Ok(js_func) = handle_func.dyn_into::<js_sys::Function>() {
+                    let _ = js_func.call2(&JsValue::NULL, &"message".into(), &event.data());
                 }
             }
 
-            ws.close(Some(0), Some("Something went wrong")).expect("Error closing websocket");
+            let data_string = event.data().as_string();
+            let handle = handle_inner.clone();
 
-        });
+            wasm_bindgen_futures::spawn_local(async move {
+                if let Err(e) = DiscordGateway::handle_gateway_message(&handle, &data_string.unwrap_or_default()).await {
+                    console_error!("Errore handling message: {:?}", e);
+                }
+            });
+
+            worker::console_debug!("message_callback called with event: {:#?}!", event.data().as_string());
+        }));
+
+        let handle_inner = handle.clone();
+
+        let on_error_callback = Closure::wrap::<dyn Fn(worker::web_sys::MessageEvent) + 'static>(Box::new(move |event: worker::web_sys::MessageEvent| { 
+            let message = js_sys::Reflect::get(&event, &"message".into()).unwrap_or(JsValue::NULL);
+            let reason = js_sys::Reflect::get(&event, &"reason".into()).unwrap_or(JsValue::NULL);
+
+            let handle = handle_inner.clone();
+
+            wasm_bindgen_futures::spawn_local(async move {
+                DiscordGateway::handle_websocket_error(&handle).await;
+            });
+
+            worker::console_error!(
+                "Websocket Error - Message: {:?}, Reason: {:?}", 
+                message, 
+                reason
+            );
+        }));
+
+        let handle_inner = handle.clone();
+
+        let on_close_callback = Closure::wrap::<dyn Fn(worker::web_sys::MessageEvent) + 'static>(Box::new(move |event: worker::web_sys::MessageEvent| {
+            let code = js_sys::Reflect::get(&event, &"code".into()).unwrap_or(JsValue::NULL);
+            let reason = js_sys::Reflect::get(&event, &"reason".into()).unwrap_or(JsValue::NULL);
+
+            let handle = handle_inner.clone();
+
+            wasm_bindgen_futures::spawn_local(async move {
+                DiscordGateway::handle_websocket_close(&handle, code.as_f64().unwrap_or_default() as u16, reason.as_string().unwrap_or_default()).await
+            });
+        }));
+
+        ws.set_onmessage(Some(on_message_callback.as_ref().unchecked_ref()));
+        ws.set_onerror(Some(on_error_callback.as_ref().unchecked_ref()));
+        ws.set_onclose(Some(on_close_callback.as_ref().unchecked_ref()));
+        on_message_callback.forget();
+        on_error_callback.forget();
+        on_close_callback.forget();
 
         Ok(())
     }
@@ -832,6 +878,8 @@ impl DiscordGateway {
             Ok(p) => p
         };
 
+        worker::console_debug!("received event: {event:?}");
+
         // 2. Caricamento stato
         let mut state = DiscordGateway::load_state_from_handle(handle)
             .await?
@@ -854,9 +902,7 @@ impl DiscordGateway {
         Ok(())
     }
 
-    async fn handle_websocket_error(handle: &GatewayHandle, error: worker::Error) {
-        console_error!("discord-gateway: WebSocket error: {:?}", error);
-
+    async fn handle_websocket_error(handle: &GatewayHandle) {
         // 1. Reset upstream e controllo logica di riconnessione
         let (should_reconnect, strategy) = {
             // Se il socket attivo è cambiato nel frattempo, usciamo
@@ -1063,7 +1109,7 @@ impl DiscordGateway {
                 *planned_guard = true;
                 // Chiudiamo il WebSocket. In workers-rs il metodo close richiede 
                 // codice di chiusura e ragione.
-                let _ = ws.close(Some(4000), Some("invalid session"));
+                let _ = ws.close_with_code_and_reason(4000, "invalid session");
             }
         }
 
@@ -1102,8 +1148,9 @@ impl DiscordGateway {
 
         if let Some(ws) = ws {
             let heartbeat = Heartbeat::new(state.sequence);
-            ws.send(&heartbeat)
-                .map_err(|e| worker::Error::from(e.to_string()))?;
+            let payload = serde_json::json!(heartbeat);
+            ws.send_with_str(&payload.to_string())
+                .map_err(|e| worker::Error::from(e.as_string().unwrap_or_default()))?;
         }
         Ok(())
     }

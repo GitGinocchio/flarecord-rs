@@ -1,13 +1,13 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use futures::lock::Mutex;
-use worker::{Env, State, Storage, WebSocket};
+use worker::{Env, State, Storage};
 
 use crate::gateway::credentials::GatewayCredentials;
 
 
 pub struct GatewayInner {
-    pub upstream: Arc<Mutex<Option<WebSocket>>>,
+    pub upstream: Arc<Mutex<Option<worker::web_sys::WebSocket>>>,
 
     pub state: Arc<Mutex<State>>,
     pub storage: Arc<Mutex<Storage>>,
