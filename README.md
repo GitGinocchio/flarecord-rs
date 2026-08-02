@@ -2,7 +2,7 @@
 
 Welcome to **Flarecord** - A lightweight, type-safe, asynchronous framework for building Discord bots on **Cloudflare Workers** using Rust and WebAssembly.
 
-> **Flarecord** = **Flare** (Cloudflare) + **Discord** (Discord)
+> **Flarecord** = **Flare** (Cloudflare) + **cord** (Discord)
 
 ---
 
