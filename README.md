@@ -60,6 +60,7 @@ Organized by feature, each document covers a specific part of the framework:
 ### ⚠️ Limitations:
 - **No Discord Gateway**: Cannot listen to real-time guild events (member joins, messages, etc.)
   - **Future Solution**: Will support gateway events via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
+  - Only possibile if this issue gets fixed: https://github.com/cloudflare/workerd/issues/486
 - No support for voice channels
 - No support for presence updates
 - Limited to interaction-based workflows
