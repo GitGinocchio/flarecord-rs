@@ -99,8 +99,10 @@ Below is a checklist of Discord API features and their support status in Flareco
 - [x] Slash commands
 - [x] Command options (all types)
 - [x] Message components (buttons, select menus)
-- [ ] Modal submissions
 - [x] Auto-complete suggestions
+- [ ] Modal submissions
+- [ ] Presence (REST endpoint)
+- [ ] Activities (REST endpoint)
 
 #### Responses ✅
 - [x] Text responses
