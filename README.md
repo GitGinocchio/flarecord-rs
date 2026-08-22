@@ -98,9 +98,9 @@ Below is a checklist of Discord API features and their support status in Flareco
 #### Interactions ✅
 - [x] Slash commands
 - [x] Command options (all types)
-- [ ] Message components (buttons, select menus)
+- [x] Message components (buttons, select menus)
 - [ ] Modal submissions
-- [ ] Auto-complete suggestions
+- [x] Auto-complete suggestions
 
 #### Responses ✅
 - [x] Text responses
@@ -108,7 +108,7 @@ Below is a checklist of Discord API features and their support status in Flareco
 - [x] Ephemeral responses
 - [x] Deferred responses
 - [ ] Follow-up messages (via webhooks)
-- [ ] Message attachments (partial)
+- [x] Message attachments (partial)
 
 #### Gateway Events ❌
 Currently **not supported**. Future implementation planned using Cloudflare Durable Objects:
@@ -245,7 +245,6 @@ Inspired by [stateless-discord-bot](https://github.com/siketyan/stateless-discor
 
 Built with:
 - [Twilight](https://twilight.rs/) - Discord models and types
-- [Tokio](https://tokio.rs/) - Async runtime
 - [Cloudflare Workers](https://workers.cloudflare.com/) - Serverless platform
 
 ---
