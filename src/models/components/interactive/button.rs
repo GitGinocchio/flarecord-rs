@@ -12,7 +12,7 @@ use twilight_model::{
     }
 };
 
-use crate::{error::BotResult, models::{components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
+use crate::{error::BotResult, models::{components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
 
 
 pub enum ButtonStyle {

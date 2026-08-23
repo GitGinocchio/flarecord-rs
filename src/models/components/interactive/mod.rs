@@ -1,11 +1,11 @@
 pub mod button;
 pub mod select;
+pub mod text_input;
 
 use std::pin::Pin;
 use std::future::Future;
 
 use crate::error::BotResult;
-use crate::models::command::response::CommandResponse;
 use crate::models::components::context::ComponentContext;
 use crate::models::components::interaction::ComponentInteraction;
 

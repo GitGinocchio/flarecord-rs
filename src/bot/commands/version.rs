@@ -1,6 +1,6 @@
 use worker::WorkerVersionMetadata;
 
-use crate::{error::{BotResult, Error}, models::{color::Color, command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, layout::{container::Container, section::Section}}, embed::Embed}};
+use crate::{error::{BotResult}, models::{color::Color, command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, layout::{container::Container, section::Section}}, embed::Embed}};
 
 pub struct VersionCommand;
 

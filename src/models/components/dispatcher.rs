@@ -1,4 +1,4 @@
-use crate::{bot::Bot, error::{BotResult, Error}, models::{command::{Command, response::CommandResponse}, components::{Component, ComponentType, context::ComponentContext, interaction::ComponentInteraction, interactive::button::Button, layout::{LayoutComponent, RootComponent, action_row::{ActionRow, ActionRowChild}, container::{Container, ContainerChild}, section::{Section, SectionAccessory}}}}};
+use crate::{error::{BotResult, Error}, models::{command::{response::CommandResponse}, components::{Component, ComponentType, context::ComponentContext, interaction::ComponentInteraction, interactive::button::Button, layout::{LayoutComponent, RootComponent, action_row::{ActionRow, ActionRowChild}, container::{Container, ContainerChild}, section::{Section, SectionAccessory}}}}};
 
 
 pub (crate) struct ComponentDispatcher;
