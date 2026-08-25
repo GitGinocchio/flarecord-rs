@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::Deref, pin::Pin};
+use std::{marker::PhantomData};
 
 use twilight_model::{
     channel::{
@@ -22,7 +22,7 @@ use twilight_model::{
     }
 };
 
-use crate::{error::BotResult, models::{command::response::CommandResponse, components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{BoxFuture, Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
+use crate::{error::BotResult, models::{components::{context::ComponentContext, id::IdAssignable, interaction::ComponentInteraction, interactive::{Handler, InteractiveComponentHandler}}}, traits::component::IntoTwilight};
 
 pub enum Select {
     String(SelectKind<String>),

@@ -16,11 +16,11 @@ use twilight_model::{
 
 use crate::{
     models::{
-        attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::{Component, id::{get_component_id, get_component_id_from_type_id}, layout::RootComponent}, embed::Embed
+        attachment::outgoing::Attachment, command::response::builder::CommandResponseBuilder, components::{Component, layout::RootComponent}, embed::Embed
     }, traits::component::{
         IntoComponent, 
         IntoTwilight
-    }
+    }, utils::get_id_from_type_id
 };
 
 pub mod builder;
@@ -92,7 +92,7 @@ impl CommandResponse {
     pub fn add_component(&mut self, component: impl IntoComponent) {
         let component = component.into_component();
 
-        let component_id = get_component_id_from_type_id(component.type_id());
+        let component_id = get_id_from_type_id(component.type_id());
         let mut root = RootComponent::new();
         component.build(&mut root);
 

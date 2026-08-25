@@ -1,15 +1,17 @@
-use std::{ops::{Deref, DerefMut}, sync::Arc};
+use std::{ops::{Deref, DerefMut}};
 
 use twilight_model::{application::interaction::{Interaction as TwilightInteraction, InteractionType}, http::interaction::{InteractionResponse, InteractionResponseType}};
 use worker::{Env, Response};
 
 use crate::{bot::{Bot, state::BotState}, error::{BotResult, Error}, models::{autocomplete::{context::AutocompleteContext, dispatcher::AutocompleteDispatcher, interaction::AutocompleteInteraction}, command::{context::CommandContext, dispatcher::CommandDispatcher, interaction::CommandInteraction}, components::{context::ComponentContext, dispatcher::ComponentDispatcher, interaction::ComponentInteraction}, modals::{Modal, context::ModalContext, interaction::ModalInteraction}}, services::discord::DiscordService, traits::component::IntoTwilight};
 
+/// Wrapper per Interaction di Discord con dispatch logic
 #[allow(unused)]
 pub (crate) struct Interaction(TwilightInteraction);
 
 #[allow(unused)]
 impl Interaction {
+    /// Handler principale per tutte le interazioni Discord
     pub (crate) async fn perform(self, env: Env) -> BotResult<Response> {
         let token = env.secret("DISCORD_BOT_TOKEN")
             .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
@@ -25,6 +27,7 @@ impl Interaction {
         }
     }
 
+    /// Handler per ping (liveness check)
     async fn handle_ping(&self) -> BotResult<Response> {
         let response = InteractionResponse {
             kind: InteractionResponseType::Pong,
@@ -35,6 +38,7 @@ impl Interaction {
         Response::from_json(&value).map_err(Error::WorkerError)
     }
 
+    /// Handler per ApplicationCommand (slash commands)
     async fn handle_command(self, env: Env, token: &str) -> BotResult<Response> {
         let command_interaction = CommandInteraction::try_from(self)?;
         
@@ -63,6 +67,7 @@ impl Interaction {
         }
     }
 
+    /// Handler per ApplicationCommandAutocomplete
     async fn handle_autocomplete(self, env: Env, token: &str) -> BotResult<Response> {
         let autocomplete_interaction = AutocompleteInteraction::try_from(self)?;
 
@@ -88,6 +93,7 @@ impl Interaction {
         }
     }
 
+    /// Handler per ModalSubmit (modal interactions)
     async fn handle_modal_submit(self, env: Env, token: &str) -> BotResult<Response> {
         let modal_interaction = ModalInteraction::try_from(self)?;
 
@@ -108,6 +114,7 @@ impl Interaction {
         }
     }
 
+    /// Handler per MessageComponent (buttons, select menus)
     async fn handle_component(self, env: Env, token: &str) -> BotResult<Response> {
         let component_interaction = ComponentInteraction::try_from(self)?;
 

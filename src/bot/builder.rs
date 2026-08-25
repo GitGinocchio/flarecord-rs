@@ -3,9 +3,19 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 use crate::{
     CommandRegistration, bot::{Bot, commands::DefaultBotCommands}, error::BotResult, models::{
         command::{
-            Command, CommandHandler, CommandType, IntoCommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse
-        }, components::{Component, ComponentType, id::get_component_id_from_type_id}, modals::{IntoModal, Modal, ModalType}
-    }, traits::component::IntoComponent
+            Command, 
+            CommandHandler, 
+            CommandType, 
+            IntoCommand, 
+            context::CommandContext, 
+            interaction::CommandInteraction, 
+            response::CommandResponse
+        }, components::{Component, ComponentType}, modals::{
+            IntoModal, 
+            Modal, 
+            ModalType
+        }
+    }, traits::component::IntoComponent, utils::get_id_from_type_id
 };
 
 pub struct BotBuilder {
@@ -29,13 +39,15 @@ impl BotBuilder {
 
     pub fn register_component<T: Component + 'static>(mut self, component: T) -> Self {
         let component = component.into_component();
-        let component_id = get_component_id_from_type_id(component.type_id());
+        let component_id = get_id_from_type_id(component.type_id());
         self.components.insert(component_id, component);
         self
     }
 
-    pub fn register_modal(mut self, modal: impl Modal + 'static) -> Self {
-        self.modals.insert(modal.id(), modal.into_modal());
+    pub fn register_modal<T: Modal + 'static>(mut self, modal: T) -> Self {
+        let modal = modal.into_modal();
+        //let modal_id = get_id_from_type_id(modal.type_id());
+        self.modals.insert(modal.name(), modal);
         self
     }
 
@@ -59,6 +71,7 @@ impl BotBuilder {
     }
 
     pub fn build(mut self) -> Arc<Bot> {
+        // Register inventory commands
         for reg in inventory::iter::<CommandRegistration> {
             let cmd = (reg.constructor)();
             self.commands.insert(cmd.name().to_string(), cmd);
