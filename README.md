@@ -67,6 +67,35 @@ Organized by feature, each document covers a specific part of the framework:
 
 ---
 
+### 🛠️ Example Workaround Implementation
+
+The following diagram illustrates an implementation of a workaround to bypass these limitations:
+
+```mermaid
+architecture-beta
+    group ext(cloud)[Discord API]
+    service discord_gateway(internet)[Discord Gateway] in ext
+    service discord_interaction(internet)[Discord Interaction] in ext
+
+    group bot(internet)[Your Discord Bot]
+
+    group edge(cloud)[Serverless Cloudflare Network] in bot
+    service worker(server)[Worker] in edge
+    service gateway_queue(disk)[Gateway Queue] in edge
+
+    group server(server)[Gateway Server] in bot
+    service gateway(server)[WS to HTTP] in server
+
+    discord_gateway:R <-[Websocket]-> L:gateway
+    discord_interaction:R <--> L:worker
+
+    gateway:T --> B:worker
+    gateway:L --> B:gateway_queue
+
+    gateway_queue:L --> R:worker
+
+---
+
 ## 📋 Feature Roadmap
 
 ### Currently Implemented ✅
