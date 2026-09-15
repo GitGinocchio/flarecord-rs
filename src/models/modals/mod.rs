@@ -7,8 +7,8 @@ use crate::{
     error::{BotResult, Error}, models::{context::InteractionContext, modals::interaction::ModalInteraction}
 };
 
-pub (crate) mod data;
-pub (crate) mod interaction;
+pub mod data;
+pub mod interaction;
 
 pub type ModalType = Arc<DynModal<'static>>;
 pub type SubmodalType = Arc<DynSubmodal<'static>>;
