@@ -1,4 +1,4 @@
-name = "example-simple"
+name = "flarecord-example-simple"
 main = "build/index.js"
 compatibility_date = "2026-06-03"
 

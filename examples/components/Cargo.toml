@@ -1,5 +1,5 @@
 [package]
-name = "components"
+name = "flarecord-example-components"
 version = "0.1.0"
 edition = "2021"
 authors = ["GitGinocchio <106624847+GitGinocchio@users.noreply.github.com>"]

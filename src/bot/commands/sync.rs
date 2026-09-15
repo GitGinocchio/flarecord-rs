@@ -1,4 +1,4 @@
-use crate::{error::{BotResult, Error}, models::command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, services::discord::DiscordService};
+use crate::{error::{BotResult, Error}, models::{command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, embed::Embed}, services::discord::DiscordService};
 
 pub struct SyncCommand;
 
@@ -20,9 +20,14 @@ impl Subcommand for SyncCommand {
 
         service.update_global_commands(interaction.application_id).await?;
 
+        let mut embed = Embed::new();
+        embed.set_title(Some("Command Sync Output".into()));
+        embed.set_description(Some("Commands synchronized successfully!".into()));
+
+
         Ok(CommandResponse::builder()
             .ephemeral()
-            .content(format!("Commands sync completed successfully!"))
+            .embed(embed)
             .build())
     }
 }

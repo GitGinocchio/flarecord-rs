@@ -1,4 +1,4 @@
-name = "example-subcommands"
+name = "flarecord-example-subcommands"
 main = "build/index.js"
 compatibility_date = "2026-06-03"
 

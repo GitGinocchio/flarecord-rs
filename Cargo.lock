@@ -146,16 +146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "components"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "flarecord",
- "worker",
- "worker-macros",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -346,6 +336,45 @@ dependencies = [
  "thiserror",
  "twilight-model",
  "worker",
+]
+
+[[package]]
+name = "flarecord-example-commands"
+version = "0.1.0"
+dependencies = [
+ "flarecord",
+ "worker",
+ "worker-macros",
+]
+
+[[package]]
+name = "flarecord-example-components"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "flarecord",
+ "worker",
+ "worker-macros",
+]
+
+[[package]]
+name = "flarecord-example-modals"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "flarecord",
+ "worker",
+ "worker-macros",
+]
+
+[[package]]
+name = "flarecord-example-simple"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "flarecord",
+ "worker",
+ "worker-macros",
 ]
 
 [[package]]
@@ -1406,16 +1435,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
-name = "simple"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "flarecord",
- "worker",
- "worker-macros",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2110,15 +2129,6 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
-
-[[package]]
-name = "with_commands"
-version = "0.1.0"
-dependencies = [
- "flarecord",
- "worker",
- "worker-macros",
-]
 
 [[package]]
 name = "worker"
