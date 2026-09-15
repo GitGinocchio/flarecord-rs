@@ -89,10 +89,11 @@ architecture-beta
     discord_gateway:R <-[Websocket]-> L:gateway
     discord_interaction:R <--> L:worker
 
-    gateway:T --> B:worker
-    gateway:L --> B:gateway_queue
+    gateway:T -[Realtime Event]-> B:worker
+    gateway:L -[Queued Event]-> B:gateway_queue
 
     gateway_queue:L --> R:worker
+```
 
 ---
 
