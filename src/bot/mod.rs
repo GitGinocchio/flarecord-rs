@@ -42,7 +42,7 @@ impl Bot {
 
     pub fn new() -> Arc<Bot> {
         let mut builder = BotBuilder::new();
-        builder = builder.enable_bot_commands();
+        builder = builder.enable_default_commands();
         builder.build()
     }
 

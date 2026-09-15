@@ -33,7 +33,7 @@ impl BotBuilder {
         }
     }
 
-    pub fn enable_bot_commands(self) -> Self {
+    pub fn enable_default_commands(self) -> Self {
         self.register_command(DefaultBotCommands)
     }
 

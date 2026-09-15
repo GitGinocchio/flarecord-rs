@@ -12,7 +12,7 @@ use crate::components::mycomponent::MyComponent;
 
 static BOT: LazyLock<Arc<Bot>> = LazyLock::new(|| {
     BotBuilder::new()
-        .enable_bot_commands()
+        .enable_default_commands()
         .register_component(MyComponent)
         .build()
 });
