@@ -1,10 +1,9 @@
 use crate::{
     error::{BotResult, Error}, models::{ 
         autocomplete::{
-            context::AutocompleteContext,
             interaction::AutocompleteInteraction, 
             response::AutocompleteResponse
-        }, command::{Command, CommandType, Subcommand, SubcommandGroup, SubcommandGroupType}
+        }, command::{Command, CommandType, Subcommand, SubcommandGroup, SubcommandGroupType}, context::InteractionContext
     }
 };
 
@@ -14,7 +13,7 @@ impl AutocompleteDispatcher {
     pub (crate) async fn dispatch(
         cmd: &CommandType,
         interaction: AutocompleteInteraction,
-        ctx: AutocompleteContext
+        ctx: InteractionContext
     ) -> BotResult<AutocompleteResponse> {
         if let Some(group_name) = interaction.data.get_subcommand_group_name() {
             if let Some(group) = cmd.groups().iter().find(|g| g.name() == group_name) {
@@ -42,7 +41,7 @@ impl AutocompleteDispatcher {
     async fn dispatch_group(
         group: &SubcommandGroupType,
         interaction: AutocompleteInteraction,
-        ctx: AutocompleteContext
+        ctx: InteractionContext
     ) -> BotResult<AutocompleteResponse> {
         if let Some(sub_name) = interaction.data.get_subcommand_name() {
             if let Some(sub) = group.subcommands().iter().find(|s| s.name() == sub_name) {

@@ -3,6 +3,7 @@ pub mod autocomplete;
 pub mod components;
 
 pub mod attachment;
+pub mod context;
 pub mod command;
 pub mod modals;
 pub mod message;

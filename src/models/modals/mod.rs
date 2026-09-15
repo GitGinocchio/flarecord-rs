@@ -4,16 +4,9 @@ use dynosaur::dynosaur;
 use twilight_model::{application::interaction::InteractionContextType, guild::Permissions, oauth::ApplicationIntegrationType};
 
 use crate::{
-    error::{BotResult, Error}, 
-    models::{
-        modals::{
-            context::ModalContext, 
-            interaction::ModalInteraction
-        }
-    }
+    error::{BotResult, Error}, models::{context::InteractionContext, modals::interaction::ModalInteraction}
 };
 
-pub (crate) mod context;
 pub (crate) mod data;
 pub (crate) mod interaction;
 
@@ -37,7 +30,7 @@ pub trait Modal: Send + Sync {
     async fn on_submit(
         &self, 
         _interaction: ModalInteraction, 
-        _ctx: ModalContext
+        _ctx: InteractionContext
     ) -> BotResult<()> {
         Err(Error::ExecuteNotImplemented(self.name()))
     }
@@ -63,7 +56,7 @@ impl<F, Fut> ModalHandler<F, Fut> {
 
 impl<F, Fut> Modal for ModalHandler<F, Fut> 
 where 
-    F: Fn(ModalInteraction, ModalContext) -> Fut + Send + Sync + 'static,
+    F: Fn(ModalInteraction, InteractionContext) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = BotResult<()>> + Send + Sync + 'static,
 {
     fn name(&self) -> String { self.name.clone() }
@@ -72,7 +65,7 @@ where
     async fn on_submit(
         &self, 
         interaction: ModalInteraction, 
-        ctx: ModalContext
+        ctx: InteractionContext
     ) -> BotResult<()> {
         (self.handler)(interaction, ctx).await
     }
@@ -88,7 +81,7 @@ pub trait Submodal: Send + Sync {
     async fn on_submit(
         &self, 
         interaction: ModalInteraction, 
-        ctx: ModalContext
+        ctx: InteractionContext
     ) -> BotResult<()>;
 }
 

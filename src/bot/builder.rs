@@ -6,11 +6,10 @@ use crate::{
             Command, 
             CommandHandler, 
             CommandType, 
-            IntoCommand, 
-            context::CommandContext, 
+            IntoCommand,
             interaction::CommandInteraction, 
             response::CommandResponse
-        }, components::{Component, ComponentType}, modals::{
+        }, components::{Component, ComponentType}, context::InteractionContext, modals::{
             IntoModal, 
             Modal, 
             ModalType
@@ -62,7 +61,7 @@ impl BotBuilder {
         handler: F
     ) -> Self
     where 
-        F: Fn(CommandInteraction, CommandContext) -> Fut + Send + Sync + 'static,
+        F: Fn(CommandInteraction, InteractionContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = BotResult<CommandResponse>> + Send + Sync + 'static,
     {
         let handler = CommandHandler::new(name.into(), description.into(), handler);

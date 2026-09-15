@@ -4,15 +4,15 @@ use dynosaur::dynosaur;
 use twilight_model::{application::interaction::InteractionContextType, guild::Permissions, id::{Id, marker::GuildMarker}, oauth::ApplicationIntegrationType};
 
 use crate::{
-    error::{BotResult, Error}, 
-    models::{
+    error::{BotResult, Error}, models::{
         autocomplete::{
-            context::AutocompleteContext, 
-            interaction::AutocompleteInteraction, response::AutocompleteResponse
-        }, 
-        command::{
-            context::CommandContext, interaction::CommandInteraction, option::CommandOption, response::CommandResponse
-        }
+            interaction::AutocompleteInteraction, 
+            response::AutocompleteResponse
+        }, command::{
+            interaction::CommandInteraction, 
+            option::CommandOption, 
+            response::CommandResponse
+        }, context::InteractionContext
     }
 };
 
@@ -23,7 +23,6 @@ pub mod data;
 pub mod response;
 pub mod option;
 pub mod interaction;
-pub mod context;
 
 pub type CommandType = Arc<DynCommand<'static>>;
 pub type SubcommandType = Arc<DynSubcommand<'static>>;
@@ -56,7 +55,7 @@ pub trait Command: Send + Sync {
     async fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
-        _ctx: AutocompleteContext
+        _ctx: InteractionContext
     ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
     }
@@ -64,7 +63,7 @@ pub trait Command: Send + Sync {
     async fn execute(
         &self, 
         _interaction: CommandInteraction, 
-        _ctx: CommandContext
+        _ctx: InteractionContext
     ) -> BotResult<CommandResponse> {
         Err(Error::ExecuteNotImplemented(self.name()))
     }
@@ -86,7 +85,7 @@ pub trait Subcommand: Sync {
     async fn autocomplete(
         &self, 
         _interaction: AutocompleteInteraction, 
-        _ctx: AutocompleteContext
+        _ctx: InteractionContext
     ) -> BotResult<AutocompleteResponse> {
         Err(Error::AutocompleteNotImplemented(self.name()))
     }
@@ -94,7 +93,7 @@ pub trait Subcommand: Sync {
     async fn execute(
         &self, 
         _interaction: CommandInteraction, 
-        _ctx: CommandContext
+        _ctx: InteractionContext
     ) -> BotResult<CommandResponse> {
         Err(Error::ExecuteNotImplemented(self.name()))
     }
@@ -133,13 +132,13 @@ impl<F, Fut> CommandHandler<F, Fut> {
 
 impl<F, Fut> Command for CommandHandler<F, Fut> 
 where 
-    F: Fn(CommandInteraction, CommandContext) -> Fut + Send + Sync + 'static,
+    F: Fn(CommandInteraction, InteractionContext) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = BotResult<CommandResponse>> + Send + Sync + 'static,
 {
     fn name(&self) -> String { self.name.clone() }
     fn description(&self) -> String { self.description.clone() }
 
-    async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, interaction: CommandInteraction, ctx: InteractionContext) -> BotResult<CommandResponse> {
         (self.handler)(interaction, ctx).await
     }
 }

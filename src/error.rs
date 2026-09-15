@@ -23,6 +23,9 @@ pub enum Error {
     #[error("Invalid option name: {0}")]
     InvalidOptionName(String),
 
+    #[error("Invalid option description: {0}")]
+    InvalidOptionDescription(String),
+
     #[error("Invalid option type: {0}")]
     InvalidOptionType(String),
 
@@ -67,6 +70,9 @@ pub enum Error {
 
     #[error("Error communicating with {0}")]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+
+    #[error("Service unavailable: '{0}'")]
+    ServiceUnavailable(String),
 
     #[error("Error: {0}")]
     Generic(String),

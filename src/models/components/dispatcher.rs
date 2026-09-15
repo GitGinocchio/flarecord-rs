@@ -1,4 +1,4 @@
-use crate::{error::{BotResult, Error}, models::{command::{response::CommandResponse}, components::{Component, ComponentType, context::ComponentContext, interaction::ComponentInteraction, interactive::button::Button, layout::{LayoutComponent, RootComponent, action_row::{ActionRow, ActionRowChild}, container::{Container, ContainerChild}, section::{Section, SectionAccessory}}}}};
+use crate::{error::{BotResult, Error}, models::{command::response::CommandResponse, components::{Component, ComponentType, interaction::ComponentInteraction, interactive::button::Button, layout::{LayoutComponent, RootComponent, action_row::{ActionRow, ActionRowChild}, container::{Container, ContainerChild}, section::{Section, SectionAccessory}}}, context::InteractionContext}};
 
 
 pub (crate) struct ComponentDispatcher;
@@ -21,7 +21,7 @@ impl ComponentDispatcher {
     pub (crate) async fn dispatch(
         component: &ComponentType, 
         interaction: ComponentInteraction, 
-        ctx: ComponentContext
+        ctx: InteractionContext
     ) -> BotResult<CommandResponse> {
         let custom_id = interaction.data.custom_id.clone();
 
@@ -53,7 +53,7 @@ impl ComponentDispatcher {
     pub (crate) async fn dispatch_layout(
         layout: &LayoutComponent,
         interaction: ComponentInteraction, 
-        ctx: ComponentContext,
+        ctx: InteractionContext,
         path: &str
     ) -> BotResult<CommandResponse> {
         match layout {
@@ -84,7 +84,7 @@ impl ComponentDispatcher {
     pub (crate) async fn dispatch_action_row(
         action_row: &ActionRow,
         interaction: ComponentInteraction, 
-        ctx: ComponentContext,
+        ctx: InteractionContext,
         path: &str
     ) -> BotResult<()> {
         let (child_id, path) = get_next_child(&path)?;
@@ -121,7 +121,7 @@ impl ComponentDispatcher {
     pub (crate) async fn dispatch_container(
         container: &Container,
         interaction: ComponentInteraction, 
-        ctx: ComponentContext,
+        ctx: InteractionContext,
         path: &str
     ) -> BotResult<()> {
         let (child_id, path) = get_next_child(&path)?;
@@ -140,7 +140,7 @@ impl ComponentDispatcher {
     pub (crate) async fn dispatch_section(
         section: &Section,
         interaction: ComponentInteraction, 
-        ctx: ComponentContext,
+        ctx: InteractionContext,
         path: &str
     ) -> BotResult<()> {
         let (child_id, path) = get_next_child(&path)?;

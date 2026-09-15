@@ -4,16 +4,11 @@ use worker::*;
 
 use flarecord::bot::{Bot, builder::BotBuilder};
 
-mod components;
-
 mod commands;
-
-use crate::components::mycomponent::MyComponent;
 
 static BOT: LazyLock<Arc<Bot>> = LazyLock::new(|| {
     BotBuilder::new()
         .enable_default_commands()
-        .register_component(MyComponent)
         .build()
 });
 
