@@ -1,4 +1,4 @@
-use crate::{error::{BotResult, Error}, models::command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, services::discord::DiscordService};
+use crate::{error::{BotResult, Error}, models::{command::{Subcommand, interaction::CommandInteraction, response::CommandResponse}, context::InteractionContext, embed::Embed}, services::discord::DiscordService};
 
 pub struct SyncCommand;
 
@@ -11,7 +11,7 @@ impl Subcommand for SyncCommand {
         "A command used to sync newly created commands with the discord api".into()
     }
 
-    async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, interaction: CommandInteraction, ctx: InteractionContext) -> BotResult<CommandResponse> {
         let token = ctx.env.secret("DISCORD_BOT_TOKEN")
             .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
             .to_string();
@@ -20,9 +20,14 @@ impl Subcommand for SyncCommand {
 
         service.update_global_commands(interaction.application_id).await?;
 
+        let mut embed = Embed::new();
+        embed.set_title(Some("Command Sync Output".into()));
+        embed.set_description(Some("Commands synchronized successfully!".into()));
+
+
         Ok(CommandResponse::builder()
             .ephemeral()
-            .content(format!("Commands sync completed successfully!"))
+            .embed(embed)
             .build())
     }
 }

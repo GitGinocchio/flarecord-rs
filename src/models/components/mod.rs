@@ -3,15 +3,14 @@ use std::sync::{Arc, Mutex};
 use dynosaur::dynosaur;
 
 use crate::models::command::response::CommandResponse;
-use crate::models::components::context::ComponentContext;
 use crate::models::components::interaction::ComponentInteraction;
 use crate::error::BotResult;
 use crate::models::components::layout::{LayoutComponent, RootComponent};
+use crate::models::context::InteractionContext;
 use crate::traits::component::IntoComponent;
 
 pub (crate) mod dispatcher;
 pub (crate) mod id;
-pub mod context;
 pub mod interaction;
 pub mod content;
 pub mod data;
@@ -51,7 +50,7 @@ impl Component for LayoutComponentHandler {
         }
     }
 
-    async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {
+    async fn handle(&self, _interaction: ComponentInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::empty())
     }
 }
@@ -82,7 +81,7 @@ impl Component for RootComponentHandler {
         }
     }
 
-    async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {
+    async fn handle(&self, _interaction: ComponentInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::empty())
     }
 }
@@ -93,7 +92,7 @@ impl Component for RootComponentHandler {
 pub trait Component: Send + Sync {
     fn build(&self, root: &mut RootComponent);
 
-    async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {
+    async fn handle(&self, _interaction: ComponentInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::empty())
     }
 }

@@ -1,14 +1,13 @@
 use crate::{
-    error::{BotResult, Error}, models::command::{
+    error::{BotResult, Error}, models::{command::{
         Command, 
         CommandType, 
         Subcommand, 
         SubcommandGroup, 
-        SubcommandGroupType, 
-        context::CommandContext, 
+        SubcommandGroupType,
         interaction::CommandInteraction, 
         response::CommandResponse
-    }
+    }, context::InteractionContext}
 };
 
 pub (crate) struct CommandDispatcher;
@@ -17,7 +16,7 @@ impl CommandDispatcher {
     pub (crate) async fn dispatch(
         cmd: &CommandType,
         interaction: CommandInteraction,
-        ctx: CommandContext
+        ctx: InteractionContext
     ) -> BotResult<CommandResponse> {
         if let Some(group_name) = interaction.data.get_subcommand_group_name() {
             if let Some(group) = cmd.groups().iter().find(|g| g.name() == group_name) {
@@ -45,7 +44,7 @@ impl CommandDispatcher {
     async fn dispatch_group(
         group: &SubcommandGroupType,
         interaction: CommandInteraction,
-        ctx: CommandContext
+        ctx: InteractionContext
     ) -> BotResult<CommandResponse> {
         if let Some(sub_name) = interaction.data.get_subcommand_name() {
             if let Some(sub) = group.subcommands().iter().find(|s| s.name() == sub_name) {

@@ -2,8 +2,6 @@ use flarecord::{
     prelude::*
 };
 
-use crate::components::mycomponent::MyComponent;
-
 #[flarecord::command]
 impl Command for Hello {
     fn name(&self) -> String {
@@ -21,7 +19,7 @@ impl Command for Hello {
         Ok(Some(vec![user_option]))
     }
 
-    async fn execute(&self, interaction: CommandInteraction, _ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, interaction: CommandInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         interaction.defer(true).await?;
 
         let author = interaction.author().ok_or(Error::Generic("Missing author".into()))?;
@@ -33,7 +31,7 @@ impl Command for Hello {
         };
 
         let response = CommandResponseBuilder::new()
-            .component(MyComponent)
+            .content(message)
             .build();
 
         interaction.edit(response).await

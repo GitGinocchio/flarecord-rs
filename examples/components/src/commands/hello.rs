@@ -19,7 +19,7 @@ impl Command for Hello {
         Ok(Some(vec![user_option]))
     }
 
-    async fn execute(&self, interaction: CommandInteraction, _ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, interaction: CommandInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         let author = interaction.author().ok_or(Error::Generic("Missing author".into()))?;
         let user = interaction.data.get_resolved_user("user");
 
@@ -38,6 +38,7 @@ impl Command for Hello {
         
         Ok(CommandResponse::builder()
             .component(MyComponent)
+            .component(action_row)
             .content(message)
             .ephemeral()
             .build())

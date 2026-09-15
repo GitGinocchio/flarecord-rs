@@ -1,6 +1,6 @@
 use worker::WorkerVersionMetadata;
 
-use crate::{error::{BotResult, Error}, models::{color::Color, command::{Subcommand, context::CommandContext, interaction::CommandInteraction, response::CommandResponse}, components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, layout::{container::Container, section::Section}}, embed::Embed}};
+use crate::{error::BotResult, models::{color::Color, command::{Subcommand, interaction::CommandInteraction, response::CommandResponse}, components::{content::{text_display::TextDisplay, thumbnail::Thumbnail}, layout::{container::Container, section::Section}}, context::InteractionContext, embed::Embed}};
 
 pub struct VersionCommand;
 
@@ -13,7 +13,7 @@ impl Subcommand for VersionCommand {
         "A command used to get version information of the bot".into()
     }
 
-    async fn execute(&self, interaction: CommandInteraction, ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, interaction: CommandInteraction, ctx: InteractionContext) -> BotResult<CommandResponse> {
         interaction.defer(true).await?;
         
         let Some(metadata_binding) = ctx.env.var("WORKER_METADATA_BINDING").ok() else {

@@ -32,6 +32,10 @@ impl CommandOption {
         }
     }
 
+    pub fn builder(name: impl Into<String>, description: impl Into<String>, kind: CommandOptionType) -> CommandOptionBuilder {
+        CommandOptionBuilder::new(name, description, kind)
+    }
+
     pub fn string(name: impl Into<String>, description: impl Into<String>) -> BotResult<Self> {
         CommandOptionBuilder::string(name, description).build()
     }
@@ -88,8 +92,16 @@ impl CommandOption {
     }
 
     pub fn validate(&self) -> BotResult<()> {
-        if self.name.is_empty() { return Err(Error::InvalidOptionName(self.name.clone())) }
-        if self.name.is_empty() { return Err(Error::InvalidOptionName(self.name.clone())) }
+        if self.name.is_empty() { 
+            return Err(Error::InvalidOptionName(self.name.clone())) 
+        }
+        if self.name.chars().count() > 32 { 
+            return Err(Error::InvalidOptionName(self.name.clone())) 
+        }
+        
+        if self.description.chars().count() > 100 { 
+            return Err(Error::InvalidOptionDescription(self.description.clone())) 
+        }
 
         if self.kind != CommandOptionType::Channel && self.channel_types.is_some() {
             return Err(Error::InvalidOptionType("Channel types only for Channel".into()));

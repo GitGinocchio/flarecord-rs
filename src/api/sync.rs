@@ -6,7 +6,7 @@ use crate::{error::Error, services::discord::DiscordService};
 
 pub async fn sync(env: Env, token: String) -> worker::Result<Response> {
     let application_id = env.secret("DISCORD_BOT_APPLICATION_ID")
-        .map_err(|e| Error::EnvironmentVariableNotFound(format!("{e}")))?
+        .map_err(|e: worker::Error| Error::EnvironmentVariableNotFound(format!("{e}")))?
         .to_string()
         .parse::<u64>()
         .map_err(|e| Error::Generic(format!("Parse int error: {e}")))?;

@@ -12,7 +12,7 @@ impl Subcommand for MySubcommand {
     }
 
     // execute is required on subcommands!
-    async fn execute(&self, _interaction: CommandInteraction, _ctx: CommandContext) -> BotResult<CommandResponse> {
+    async fn execute(&self, _interaction: CommandInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::new())
     }
 }

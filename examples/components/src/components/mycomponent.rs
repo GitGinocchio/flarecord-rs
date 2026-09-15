@@ -1,15 +1,14 @@
 use flarecord::{
-    models::{ChannelType, SelectMenuType, components::{
-        content::{media_gallery::{MediaGallery, MediaGalleryItem}, text_display::TextDisplay}, interactive::{button::{
+    models::{components::{
+        content::{media_gallery::{MediaGallery, MediaGalleryItem}}, interactive::{button::{
             Button, 
             ButtonStyle
-        }, select::Select}, layout::{
+        }}, layout::{
             action_row::{
                 ActionRow, 
                 IntoActionRow
             }, 
             container::Container, 
-            section::Section, 
             separator::Separator
         }
     }}, 
@@ -55,7 +54,7 @@ impl Component for MyComponent {
         root.add(buttons_action_row);
     }
 
-    async fn handle(&self, _interaction: ComponentInteraction, _ctx: ComponentContext) -> BotResult<CommandResponse> {
+    async fn handle(&self, _interaction: ComponentInteraction, _ctx: InteractionContext) -> BotResult<CommandResponse> {
         Ok(CommandResponse::new())
     }
 }

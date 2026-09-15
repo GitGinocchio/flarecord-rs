@@ -8,6 +8,10 @@ pub struct CommandOptionBuilder(CommandOption);
 
 #[allow(unused)]
 impl CommandOptionBuilder {
+    pub fn new(name: impl Into<String>, description: impl Into<String>, kind: CommandOptionType) -> Self {
+        Self(CommandOption::new(name, description, kind))
+    }
+
     pub fn string(name: impl Into<String>, description: impl Into<String>) -> Self {
         Self(CommandOption::new(name, description, CommandOptionType::String))
     }

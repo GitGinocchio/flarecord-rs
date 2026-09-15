@@ -5,9 +5,10 @@ edition = "2024"
 
 [workspace]
 members = [
-    "examples/with_commands",
+    "examples/commands",
     "examples/subcommands",
     "examples/components",
+    "examples/modals",
     "examples/simple",
     ".", 
     "flarecord-macros"

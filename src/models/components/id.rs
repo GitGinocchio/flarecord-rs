@@ -1,6 +1,3 @@
-use std::any::TypeId;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub (crate) struct HierarchicalId {
     prefix: Option<String>,
@@ -78,21 +75,6 @@ pub (crate) trait IdAssignable {
     fn children(&mut self) -> Box<dyn Iterator<Item = &mut dyn IdAssignable> + '_> {
         Box::new(std::iter::empty())
     }
-}
-
-#[allow(unused)]
-pub (crate) fn get_component_id<T: 'static>() -> String {
-    let mut s = DefaultHasher::new();
-    TypeId::of::<T>().hash(&mut s);
-    let hash = s.finish();
-    format!("{:016x}", hash)[..4].to_string()
-}
-
-pub (crate) fn get_component_id_from_type_id(type_id: TypeId) -> String {
-    let mut s = DefaultHasher::new();
-    type_id.hash(&mut s);
-    let hash = s.finish();
-    format!("{:016x}", hash)[..4].to_string()
 }
 
 pub (crate) fn assign_ids(component: &mut dyn IdAssignable, current_id: &mut HierarchicalId) {

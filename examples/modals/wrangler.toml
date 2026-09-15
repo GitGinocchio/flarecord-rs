@@ -1,4 +1,4 @@
-name = "flarecord-example-components"
+name = "flarecord-example-modals"
 main = "build/index.js"
 compatibility_date = "2026-06-03"
 

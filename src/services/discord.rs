@@ -12,7 +12,7 @@ use twilight_model::{
 };
 use worker::Date;
 
-use crate::{bot::{Bot, HTTP_CLIENT}, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, message::DiscordMessagePayload, user::User}, traits::component::IntoTwilight};
+use crate::{bot::{Bot, HTTP_CLIENT}, error::{BotResult, Error}, models::{command::{response::CommandResponse, serializable::SerializableCommand}, message::DiscordMessagePayload, user::User}, traits::{component::IntoTwilight}};
 
 pub (crate) static DISCORD_SERVICE: OnceLock<Arc<DiscordService>> = OnceLock::new();
 const BASE_URL: &str = concat!("https://discord.com/api/v", "10");
@@ -24,6 +24,12 @@ pub struct DiscordService {
 impl DiscordService {
     pub (crate) fn get_or_init(token: String) -> Arc<DiscordService> {
         DISCORD_SERVICE.get_or_init(|| Arc::new(Self::new(token))).clone()
+    }
+
+    pub (crate) fn get() -> BotResult<Arc<DiscordService>> {
+        DISCORD_SERVICE.get()
+            .ok_or(Error::ServiceUnavailable(format!("Discord Service not initialized")))
+            .cloned()
     }
 
     pub (crate) fn new(token: String) -> Self {
